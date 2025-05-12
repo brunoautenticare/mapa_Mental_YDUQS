@@ -8,13 +8,17 @@ export async function generateDiagramWithAI(prompt: string, diagramType: string,
       // Usar a origem da janela atual como URL base
       baseUrl = window.location.origin
     } else if (process.env.NEXT_PUBLIC_VERCEL_URL) {
-      // Em ambiente Vercel, usar a URL do Vercel
-      baseUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      // Em ambiente Vercel, usar a URL do Vercel (sem adicionar https:// se já estiver incluído)
+      const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL
+      baseUrl = vercelUrl.startsWith("http") ? vercelUrl : `https://${vercelUrl}`
     }
 
-    console.log(`Fazendo requisição para: ${baseUrl}/api/generate-diagram`)
+    // Garantir que a URL seja construída corretamente
+    const apiUrl = new URL("/api/generate-diagram", baseUrl).toString()
 
-    const response = await fetch(`${baseUrl}/api/generate-diagram`, {
+    console.log(`Fazendo requisição para: ${apiUrl}`)
+
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
