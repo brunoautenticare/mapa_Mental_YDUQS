@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useEffect, useRef, useState, useCallback } from "react"
 import * as d3 from "d3"
-import { ZoomIn, ZoomOut, RotateCcw, Download, Maximize, Minimize } from "lucide-react"
+import { ZoomIn, ZoomOut, RotateCcw, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 
@@ -29,7 +29,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [pan, setPan] = useState({ x: 0, y: 0 })
-  const [isFullscreen, setIsFullscreen] = useState(false)
   const [diagramSize, setDiagramSize] = useState({ width: 0, height: 0 })
 
   // Usar refs para evitar re-renderizações desnecessárias
@@ -149,14 +148,22 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
     const containerWidth = containerRef.current.clientWidth
     const containerHeight = containerRef.current.clientHeight
 
+    console.log("Dimensões do contêiner:", { width: containerWidth, height: containerHeight })
+
     // Calcular dimensões do diagrama
     const diagramDimensions = calculateDiagramSize()
+    console.log("Dimensões do diagrama:", diagramDimensions)
 
     if (diagramDimensions.width === 0 || diagramDimensions.height === 0) {
       // Se não conseguimos calcular as dimensões, usar valores padrão
+      const centerX = containerWidth / 2
+      const centerY = containerHeight / 2
+
+      console.log("Usando posição central padrão:", { x: centerX, y: centerY })
+
       setPan({
-        x: containerWidth / 2,
-        y: containerHeight / 2,
+        x: centerX,
+        y: centerY,
       })
       setZoom(1)
       return
@@ -167,7 +174,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
     const diagramCenterY = (diagramDimensions.minY + diagramDimensions.maxY) / 2
 
     // Calcular o zoom ideal para exibir todo o diagrama
-    const padding = 40 // Espaço de padding em pixels
+    const padding = 60 // Aumentar o padding para garantir mais espaço
     const widthRatio = (containerWidth - padding * 2) / diagramDimensions.width
     const heightRatio = (containerHeight - padding * 2) / diagramDimensions.height
     const idealZoom = Math.min(widthRatio, heightRatio, 1) // Limitar zoom a 1 (sem ampliar)
@@ -175,6 +182,8 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
     // Calcular a posição para centralizar
     const centerX = containerWidth / 2 - diagramCenterX * idealZoom
     const centerY = containerHeight / 2 - diagramCenterY * idealZoom
+
+    console.log("Nova posição calculada:", { x: centerX, y: centerY, zoom: idealZoom * 0.9 })
 
     // Aplicar o posicionamento e zoom calculados
     setPan({
@@ -191,13 +200,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
 
     // Marcar que o posicionamento inicial foi aplicado
     initialPositionAppliedRef.current = true
-
-    console.log("Diagrama centralizado:", {
-      containerSize: { width: containerWidth, height: containerHeight },
-      diagramSize: diagramDimensions,
-      pan: { x: centerX, y: centerY },
-      zoom: idealZoom * 0.9,
-    })
   }, [calculateDiagramSize])
 
   // Função para renderizar o diagrama
@@ -554,36 +556,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
     }
   }
 
-  // Função para alternar modo de tela cheia
-  const toggleFullscreen = () => {
-    if (!containerRef.current) return
-
-    if (!isFullscreen) {
-      if (containerRef.current.requestFullscreen) {
-        containerRef.current.requestFullscreen()
-      }
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen()
-      }
-    }
-
-    setIsFullscreen(!isFullscreen)
-  }
-
-  // Efeito para lidar com mudanças de tela cheia
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement)
-    }
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange)
-
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange)
-    }
-  }, [])
-
   // Função para exportar o diagrama como PNG
   const exportAsPNG = () => {
     if (!svgRef.current) return
@@ -712,16 +684,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
             data-testid="reset-button"
           >
             <RotateCcw className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={toggleFullscreen}
-            title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
-            data-testid="fullscreen-button"
-          >
-            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </Button>
         </div>
 

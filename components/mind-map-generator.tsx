@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
@@ -8,60 +8,58 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MindMap } from "@/components/mind-map"
 import { ColorPaletteSelector } from "@/components/color-palette-selector"
 import { LayoutStyleSelector } from "@/components/layout-style-selector"
-import { FileText, FileType, Globe, Youtube, Sparkles, Settings } from "lucide-react"
+import { FileText, FileType, Globe, Youtube, Sparkles, Settings, Loader2 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { generateMindMap } from "@/lib/actions"
+import { useToast } from "@/hooks/use-toast"
 
 export function MindMapGenerator() {
   const [inputText, setInputText] = useState("")
   const [language, setLanguage] = useState("português")
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const [mindMapData, setMindMapData] = useState(null)
   const [diagramType, setDiagramType] = useState("mind-map")
   const [selectedPalette, setSelectedPalette] = useState("default")
   const [layoutStyle, setLayoutStyle] = useState("standard")
+  const { toast } = useToast()
 
   const handleGenerate = () => {
     if (!inputText.trim()) return
 
-    setIsGenerating(true)
+    const formData = new FormData()
+    formData.append("prompt", inputText)
+    formData.append("diagramType", diagramType)
+    formData.append("language", language)
 
-    // Simulando o tempo de processamento
-    setTimeout(() => {
-      // Dados de exemplo para o mapa mental
-      const data = {
-        id: "root",
-        name: inputText.split(" ").slice(0, 3).join(" "),
-        children: [
-          {
-            id: "1",
-            name: "Tópico 1",
-            children: [
-              { id: "1-1", name: "Subtópico 1.1" },
-              { id: "1-2", name: "Subtópico 1.2" },
-            ],
-          },
-          {
-            id: "2",
-            name: "Tópico 2",
-            children: [
-              { id: "2-1", name: "Subtópico 2.1" },
-              { id: "2-2", name: "Subtópico 2.2" },
-            ],
-          },
-          {
-            id: "3",
-            name: "Tópico 3",
-            children: [
-              { id: "3-1", name: "Subtópico 3.1" },
-              { id: "3-2", name: "Subtópico 3.2" },
-            ],
-          },
-        ],
+    startTransition(async () => {
+      try {
+        const result = await generateMindMap(formData)
+
+        if (result.error) {
+          toast({
+            title: "Erro",
+            description: result.error,
+            variant: "destructive",
+          })
+          return
+        }
+
+        if (result.data) {
+          setMindMapData(result.data)
+          toast({
+            title: "Sucesso",
+            description: "Mapa mental gerado com sucesso!",
+          })
+        }
+      } catch (error) {
+        console.error("Erro ao gerar mapa mental:", error)
+        toast({
+          title: "Erro",
+          description: error.message || "Falha ao gerar o mapa mental. Por favor, tente novamente.",
+          variant: "destructive",
+        })
       }
-
-      setMindMapData(data)
-      setIsGenerating(false)
-    }, 1500)
+    })
   }
 
   const examplePrompts = [
@@ -104,6 +102,7 @@ export function MindMapGenerator() {
               className="min-h-[150px] resize-none border-0 focus-visible:ring-0 p-0"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
+              disabled={isPending}
             />
             <div className="flex justify-between items-center mt-4 pt-4 border-t">
               <div className="flex flex-col gap-4 w-full">
@@ -126,6 +125,7 @@ export function MindMapGenerator() {
                         size="sm"
                         onClick={() => setDiagramType(type.id)}
                         className="flex items-center gap-1"
+                        disabled={isPending}
                       >
                         <span>{type.icon}</span>
                         <span className="hidden sm:inline">{type.label}</span>
@@ -136,7 +136,7 @@ export function MindMapGenerator() {
 
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <Select value={language} onValueChange={setLanguage}>
+                    <Select value={language} onValueChange={setLanguage} disabled={isPending}>
                       <SelectTrigger className="w-[150px]">
                         <SelectValue />
                       </SelectTrigger>
@@ -149,7 +149,7 @@ export function MindMapGenerator() {
 
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" size="icon">
+                        <Button variant="outline" size="icon" disabled={isPending}>
                           <Settings className="h-4 w-4" />
                         </Button>
                       </PopoverTrigger>
@@ -169,29 +169,10 @@ export function MindMapGenerator() {
                     </Popover>
                   </div>
 
-                  <Button onClick={handleGenerate} disabled={!inputText.trim() || isGenerating} className="gap-2">
-                    {isGenerating ? (
+                  <Button onClick={handleGenerate} disabled={!inputText.trim() || isPending} className="gap-2">
+                    {isPending ? (
                       <>
-                        <svg
-                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
+                        <Loader2 className="h-4 w-4 animate-spin" />
                         Gerando...
                       </>
                     ) : (
@@ -206,7 +187,7 @@ export function MindMapGenerator() {
             </div>
           </div>
 
-          {!mindMapData && (
+          {!mindMapData && !isPending && (
             <>
               <div className="text-sm text-muted-foreground mb-4 text-center">Exemplos de Prompts</div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -227,7 +208,20 @@ export function MindMapGenerator() {
             </>
           )}
 
-          {mindMapData && (
+          {isPending && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Gerando seu mapa mental...</h3>
+              <p className="text-muted-foreground text-center max-w-md">
+                Estamos processando seu prompt com IA para criar um mapa mental personalizado. Isso pode levar alguns
+                segundos.
+              </p>
+            </div>
+          )}
+
+          {mindMapData && !isPending && (
             <div className="mt-8">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold">Seu Mapa Mental</h3>
