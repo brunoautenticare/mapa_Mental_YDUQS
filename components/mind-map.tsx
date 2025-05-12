@@ -2,9 +2,9 @@
 
 import type React from "react"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import * as d3 from "d3"
-import { ZoomIn, ZoomOut, RotateCcw, Download } from "lucide-react"
+import { ZoomIn, ZoomOut, RotateCcw, Download, Maximize, Minimize } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 
@@ -24,14 +24,194 @@ interface MindMapProps {
 export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMapProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const diagramRef = useRef<SVGGElement | null>(null)
   const [zoom, setZoom] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [diagramSize, setDiagramSize] = useState({ width: 0, height: 0 })
+
+  // Usar refs para evitar re-renderizações desnecessárias
+  const dataIdRef = useRef("")
+  const initialPositionAppliedRef = useRef(false)
+
+  // Função para obter cores com base na paleta selecionada
+  const getColorsByPalette = useCallback((palette: string) => {
+    switch (palette) {
+      case "blue":
+        return ["#1e40af", "#3b82f6", "#93c5fd", "#dbeafe"]
+      case "green":
+        return ["#166534", "#22c55e", "#86efac", "#dcfce7"]
+      case "red":
+        return ["#991b1b", "#ef4444", "#fca5a5", "#fee2e2"]
+      case "purple":
+        return ["#6b21a8", "#a855f7", "#d8b4fe", "#f3e8ff"]
+      case "orange":
+        return ["#9a3412", "#f97316", "#fdba74", "#ffedd5"]
+      case "rainbow":
+        return ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7"]
+      case "pastel":
+        return ["#f87171", "#fdba74", "#fde047", "#86efac", "#93c5fd", "#d8b4fe"]
+      case "earth":
+        return ["#78350f", "#a16207", "#15803d", "#166534", "#1e3a8a"]
+      default:
+        return ["#4f46e5", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"]
+    }
+  }, [])
+
+  // Função para obter forma do nó com base no estilo de layout
+  const getNodeShape = useCallback((style: string) => {
+    switch (style) {
+      case "rect":
+        return "rect"
+      case "diamond":
+        return "diamond"
+      default:
+        return "circle"
+    }
+  }, [])
+
+  // Função para calcular as dimensões reais do diagrama
+  const calculateDiagramSize = useCallback(() => {
+    if (!svgRef.current) return { width: 0, height: 0 }
+
+    try {
+      // Obter todos os nós e links do diagrama
+      const nodes = d3.select(svgRef.current).selectAll(".node").nodes()
+      const links = d3.select(svgRef.current).selectAll(".link").nodes()
+
+      if (nodes.length === 0) return { width: 0, height: 0 }
+
+      // Inicializar com valores extremos
+      let minX = Number.POSITIVE_INFINITY
+      let minY = Number.POSITIVE_INFINITY
+      let maxX = Number.NEGATIVE_INFINITY
+      let maxY = Number.NEGATIVE_INFINITY
+
+      // Verificar cada nó
+      nodes.forEach((node) => {
+        const bbox = (node as SVGGElement).getBBox()
+        const transform = (node as SVGGElement).getAttribute("transform")
+        let x = 0
+        let y = 0
+
+        // Extrair valores de transformação
+        if (transform) {
+          const match = transform.match(/translate$$([^,]+),([^)]+)$$/)
+          if (match) {
+            x = Number.parseFloat(match[1])
+            y = Number.parseFloat(match[2])
+          }
+        }
+
+        // Atualizar limites
+        minX = Math.min(minX, x + bbox.x)
+        minY = Math.min(minY, y + bbox.y)
+        maxX = Math.max(maxX, x + bbox.x + bbox.width)
+        maxY = Math.max(maxY, y + bbox.y + bbox.height)
+      })
+
+      // Verificar cada link
+      links.forEach((link) => {
+        const bbox = (link as SVGPathElement).getBBox()
+
+        // Atualizar limites
+        minX = Math.min(minX, bbox.x)
+        minY = Math.min(minY, bbox.y)
+        maxX = Math.max(maxX, bbox.x + bbox.width)
+        maxY = Math.max(maxY, bbox.y + bbox.height)
+      })
+
+      // Calcular dimensões
+      const width = maxX - minX
+      const height = maxY - minY
+
+      return {
+        width: width || 0,
+        height: height || 0,
+        minX: minX === Number.POSITIVE_INFINITY ? 0 : minX,
+        minY: minY === Number.POSITIVE_INFINITY ? 0 : minY,
+        maxX: maxX === Number.NEGATIVE_INFINITY ? 0 : maxX,
+        maxY: maxY === Number.NEGATIVE_INFINITY ? 0 : maxY,
+      }
+    } catch (e) {
+      console.error("Erro ao calcular dimensões do diagrama:", e)
+      return { width: 0, height: 0 }
+    }
+  }, [])
+
+  // Função para centralizar o diagrama
+  const centerDiagram = useCallback(() => {
+    if (!containerRef.current || !svgRef.current) return
+
+    // Obter dimensões do contêiner
+    const containerWidth = containerRef.current.clientWidth
+    const containerHeight = containerRef.current.clientHeight
+
+    // Calcular dimensões do diagrama
+    const diagramDimensions = calculateDiagramSize()
+
+    if (diagramDimensions.width === 0 || diagramDimensions.height === 0) {
+      // Se não conseguimos calcular as dimensões, usar valores padrão
+      setPan({
+        x: containerWidth / 2,
+        y: containerHeight / 2,
+      })
+      setZoom(1)
+      return
+    }
+
+    // Calcular o centro do diagrama
+    const diagramCenterX = (diagramDimensions.minX + diagramDimensions.maxX) / 2
+    const diagramCenterY = (diagramDimensions.minY + diagramDimensions.maxY) / 2
+
+    // Calcular o zoom ideal para exibir todo o diagrama
+    const padding = 40 // Espaço de padding em pixels
+    const widthRatio = (containerWidth - padding * 2) / diagramDimensions.width
+    const heightRatio = (containerHeight - padding * 2) / diagramDimensions.height
+    const idealZoom = Math.min(widthRatio, heightRatio, 1) // Limitar zoom a 1 (sem ampliar)
+
+    // Calcular a posição para centralizar
+    const centerX = containerWidth / 2 - diagramCenterX * idealZoom
+    const centerY = containerHeight / 2 - diagramCenterY * idealZoom
+
+    // Aplicar o posicionamento e zoom calculados
+    setPan({
+      x: centerX,
+      y: centerY,
+    })
+    setZoom(idealZoom * 0.9) // Usar 90% do zoom ideal para garantir que tudo seja visível
+
+    // Atualizar o estado de dimensões do diagrama
+    setDiagramSize({
+      width: diagramDimensions.width,
+      height: diagramDimensions.height,
+    })
+
+    // Marcar que o posicionamento inicial foi aplicado
+    initialPositionAppliedRef.current = true
+
+    console.log("Diagrama centralizado:", {
+      containerSize: { width: containerWidth, height: containerHeight },
+      diagramSize: diagramDimensions,
+      pan: { x: centerX, y: centerY },
+      zoom: idealZoom * 0.9,
+    })
+  }, [calculateDiagramSize])
 
   // Função para renderizar o diagrama
-  const renderDiagram = () => {
-    if (!data || !svgRef.current) return
+  const renderDiagram = useCallback(() => {
+    if (!data || !svgRef.current) return false
+
+    // Verificar se os dados mudaram
+    const currentDataId = data.id || JSON.stringify(data).substring(0, 50)
+    const isNewData = currentDataId !== dataIdRef.current
+
+    if (isNewData) {
+      dataIdRef.current = currentDataId
+      initialPositionAppliedRef.current = false
+    }
 
     // Limpar SVG existente
     d3.select(svgRef.current).selectAll("*").remove()
@@ -93,10 +273,14 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
     // Criar grupo principal do SVG
     const svg = d3
       .select(svgRef.current)
-      .attr("width", width)
-      .attr("height", height)
+      .attr("width", "100%")
+      .attr("height", "100%")
+      .attr("viewBox", `0 0 ${width} ${height}`)
       .append("g")
       .attr("class", "diagram-container")
+
+    // Salvar referência ao grupo do diagrama
+    diagramRef.current = svg.node() as SVGGElement
 
     // Ajustar a transformação com base no tipo de diagrama
     if (isRadial) {
@@ -261,15 +445,27 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
       .text((d: any) => d.data.name)
       .attr("font-size", "12px")
       .attr("fill", nodeShape === "rect" ? "#fff" : "#333")
-  }
+
+    return isNewData
+  }, [data, diagramType, colorPalette, layoutStyle, getColorsByPalette, getNodeShape])
 
   // Efeito para renderizar o diagrama quando os dados ou configurações mudam
   useEffect(() => {
-    renderDiagram()
-    // Resetar pan e zoom quando o diagrama muda
-    setPan({ x: 0, y: 0 })
-    setZoom(1)
-  }, [data, diagramType, colorPalette, layoutStyle])
+    const isNewData = renderDiagram()
+
+    // Se são novos dados, resetar o posicionamento
+    if (isNewData) {
+      // Resetar o pan e zoom para valores iniciais
+      setPan({ x: 0, y: 0 })
+      setZoom(1)
+
+      // Usar setTimeout para garantir que o DOM foi atualizado
+      // e que todos os elementos do diagrama foram renderizados
+      setTimeout(() => {
+        centerDiagram()
+      }, 200) // Aumentar o timeout para garantir que o diagrama foi completamente renderizado
+    }
+  }, [data, diagramType, colorPalette, layoutStyle, renderDiagram, centerDiagram])
 
   // Efeito para aplicar pan e zoom
   useEffect(() => {
@@ -295,8 +491,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
   }
 
   const handleReset = () => {
-    setPan({ x: 0, y: 0 })
-    setZoom(1)
+    centerDiagram()
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -304,6 +499,11 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
       // Apenas botão esquerdo do mouse
       setIsDragging(true)
       setDragStart({ x: e.clientX, y: e.clientY })
+
+      // Mudar cursor para indicar arrasto
+      if (containerRef.current) {
+        containerRef.current.style.cursor = "grabbing"
+      }
     }
   }
 
@@ -323,10 +523,22 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
 
   const handleMouseUp = () => {
     setIsDragging(false)
+
+    // Restaurar cursor
+    if (containerRef.current) {
+      containerRef.current.style.cursor = "grab"
+    }
   }
 
   const handleMouseLeave = () => {
-    setIsDragging(false)
+    if (isDragging) {
+      setIsDragging(false)
+
+      // Restaurar cursor
+      if (containerRef.current) {
+        containerRef.current.style.cursor = "grab"
+      }
+    }
   }
 
   const handleWheel = (e: React.WheelEvent) => {
@@ -341,6 +553,36 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
       setZoom((prev) => Math.max(prev - 0.05, 0.5))
     }
   }
+
+  // Função para alternar modo de tela cheia
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return
+
+    if (!isFullscreen) {
+      if (containerRef.current.requestFullscreen) {
+        containerRef.current.requestFullscreen()
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+      }
+    }
+
+    setIsFullscreen(!isFullscreen)
+  }
+
+  // Efeito para lidar com mudanças de tela cheia
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange)
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange)
+    }
+  }, [])
 
   // Função para exportar o diagrama como PNG
   const exportAsPNG = () => {
@@ -381,47 +623,24 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
       }
     }
 
+    img.crossOrigin = "anonymous"
     img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData)
   }
 
-  // Função para obter cores com base na paleta selecionada
-  function getColorsByPalette(palette: string) {
-    switch (palette) {
-      case "blue":
-        return ["#1e40af", "#3b82f6", "#93c5fd", "#dbeafe"]
-      case "green":
-        return ["#166534", "#22c55e", "#86efac", "#dcfce7"]
-      case "red":
-        return ["#991b1b", "#ef4444", "#fca5a5", "#fee2e2"]
-      case "purple":
-        return ["#6b21a8", "#a855f7", "#d8b4fe", "#f3e8ff"]
-      case "orange":
-        return ["#9a3412", "#f97316", "#fdba74", "#ffedd5"]
-      case "rainbow":
-        return ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7"]
-      case "pastel":
-        return ["#f87171", "#fdba74", "#fde047", "#86efac", "#93c5fd", "#d8b4fe"]
-      case "earth":
-        return ["#78350f", "#a16207", "#15803d", "#166534", "#1e3a8a"]
-      default:
-        return ["#4f46e5", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"]
+  // Efeito para recentralizar o diagrama quando o tamanho da janela mudar
+  useEffect(() => {
+    const handleResize = () => {
+      centerDiagram()
     }
-  }
 
-  // Função para obter forma do nó com base no estilo de layout
-  function getNodeShape(style: string) {
-    switch (style) {
-      case "rect":
-        return "rect"
-      case "diamond":
-        return "diamond"
-      default:
-        return "circle"
+    window.addEventListener("resize", handleResize)
+    return () => {
+      window.removeEventListener("resize", handleResize)
     }
-  }
+  }, [centerDiagram])
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" data-testid="mind-map-component">
       <div
         ref={containerRef}
         className="w-full h-[500px] border rounded-lg relative bg-white"
@@ -436,50 +655,78 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
         onWheel={handleWheel}
+        data-testid="diagram-container"
       >
-        <div
+        <svg
+          ref={svgRef}
+          width="100%"
+          height="100%"
           style={{
-            width: "100%",
-            height: "100%",
-            position: "relative",
-            overflow: "visible", // Permite que o conteúdo do SVG ultrapasse este div
+            display: "block",
+            maxWidth: "100%",
+            maxHeight: "100%",
           }}
-        >
-          <svg
-            ref={svgRef}
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              maxWidth: "none",
-              maxHeight: "none",
-            }}
-          />
-        </div>
+          data-testid="diagram-svg"
+        />
       </div>
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handleZoomOut} title="Diminuir zoom">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleZoomOut}
+            title="Diminuir zoom"
+            data-testid="zoom-out-button"
+          >
             <ZoomOut className="h-4 w-4" />
           </Button>
 
           <div className="w-[200px]">
-            <Slider value={[zoom]} min={0.5} max={2} step={0.1} onValueChange={handleZoomChange} />
+            <Slider
+              defaultValue={[1]}
+              value={[zoom]}
+              min={0.5}
+              max={2}
+              step={0.1}
+              onValueChange={handleZoomChange}
+              data-testid="zoom-slider"
+            />
           </div>
 
-          <Button variant="outline" size="icon" onClick={handleZoomIn} title="Aumentar zoom">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleZoomIn}
+            title="Aumentar zoom"
+            data-testid="zoom-in-button"
+          >
             <ZoomIn className="h-4 w-4" />
           </Button>
 
-          <Button variant="outline" size="icon" onClick={handleReset} title="Resetar visualização">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleReset}
+            title="Resetar visualização"
+            data-testid="reset-button"
+          >
             <RotateCcw className="h-4 w-4" />
+          </Button>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+            data-testid="fullscreen-button"
+          >
+            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </Button>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={exportAsPNG}>
+          <Button variant="outline" onClick={exportAsPNG} data-testid="export-button">
             <Download className="h-4 w-4 mr-2" />
             Exportar PNG
           </Button>

@@ -22,6 +22,12 @@ export function useResizeObserver(
     // Start observing
     observer.observe(element)
 
+    // Initial size callback
+    callback({
+      width: element.clientWidth,
+      height: element.clientHeight,
+    })
+
     // Cleanup
     return () => {
       observer.disconnect()
