@@ -10,7 +10,9 @@ export const metadata: Metadata = {
   title: "Criador de Mapas Mentais",
   description: "Gere mapas mentais a partir de texto usando IA",
   icons: {
-    icon: "/favicon.ico",
+    icon: [{ url: "/favicon.ico", sizes: "any" }],
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
   },
     generator: 'v0.dev'
 }
@@ -22,6 +24,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
+      <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+        <link rel="apple-touch-icon" href="/favicon.ico" />
+      </head>
       <body className={inter.className}>
         {children}
         <Toaster />
