@@ -5,9 +5,9 @@ export function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="flex items-center gap-2 mb-4 md:mb-0">
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-primary text-lg">M</span>
+              <span className="text-primary text-lg">Y</span>
             </div>
-            <span className="font-semibold">MindMap</span>
+            <span className="font-semibold">YDUQS</span>
           </div>
 
           <div className="flex gap-6">
@@ -23,7 +23,7 @@ export function Footer() {
           </div>
         </div>
         <div className="text-center mt-6 text-sm text-muted-foreground">
-          © {new Date().getFullYear()} MindMap. Todos os direitos reservados.
+          © {new Date().getFullYear()} YDUQS. Todos os direitos reservados Autenticare.
         </div>
       </div>
     </footer>

@@ -9,9 +9,9 @@ export function Header() {
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-            <span className="text-primary text-lg">M</span>
+            <span className="text-primary text-lg">Y</span>
           </div>
-          <span className="font-semibold text-xl">MindMap</span>
+          <span className="font-semibold text-xl">YDUQS</span>
         </div>
 
         <nav className="hidden md:flex items-center gap-6">

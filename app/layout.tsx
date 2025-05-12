@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Criador de Mapas Mentais",
+  title: "Criador de Mapas Mentais | YDUQS",
   description: "Gere mapas mentais a partir de texto usando IA",
   icons: {
     icon: "/favicon.png",
