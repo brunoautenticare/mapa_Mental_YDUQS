@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
 // Inicializar o cliente da API do Google AI
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || "")
+const genAI = new GoogleGenerativeAI(process.env.CHAVE_API_DO_GOOGLE_AI || "")
 
 export async function POST(request: Request) {
   try {
@@ -12,9 +12,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Prompt é obrigatório" }, { status: 400 })
     }
 
-    // Selecionar o modelo Gemini correto
-    // Usando gemini-1.5-flash que é um modelo mais recente e disponível
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    // Selecionar o modelo Gemini 2.0 Flash
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
 
     // Criar um prompt estruturado para o modelo
     const systemPrompt = `

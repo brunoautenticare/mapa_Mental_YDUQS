@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MindMap } from "@/components/mind-map"
 import { ColorPaletteSelector } from "@/components/color-palette-selector"
 import { LayoutStyleSelector } from "@/components/layout-style-selector"
-import { FileText, FileType, Globe, Youtube, Sparkles, Settings, Loader2 } from "lucide-react"
+import { FileText, FileType, Globe, Youtube, Sparkles, Settings, Loader2, AlertCircle } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { generateMindMap } from "@/lib/actions"
 import { useToast } from "@/hooks/use-toast"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export function MindMapGenerator() {
   const [inputText, setInputText] = useState("")
@@ -21,10 +22,14 @@ export function MindMapGenerator() {
   const [diagramType, setDiagramType] = useState("mind-map")
   const [selectedPalette, setSelectedPalette] = useState("default")
   const [layoutStyle, setLayoutStyle] = useState("standard")
+  const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
   const handleGenerate = () => {
     if (!inputText.trim()) return
+
+    // Limpar erro anterior
+    setError(null)
 
     const formData = new FormData()
     formData.append("prompt", inputText)
@@ -36,6 +41,7 @@ export function MindMapGenerator() {
         const result = await generateMindMap(formData)
 
         if (result.error) {
+          setError(result.error)
           toast({
             title: "Erro",
             description: result.error,
@@ -53,9 +59,11 @@ export function MindMapGenerator() {
         }
       } catch (error) {
         console.error("Erro ao gerar mapa mental:", error)
+        const errorMessage = error.message || "Falha ao gerar o mapa mental. Por favor, tente novamente."
+        setError(errorMessage)
         toast({
           title: "Erro",
-          description: error.message || "Falha ao gerar o mapa mental. Por favor, tente novamente.",
+          description: errorMessage,
           variant: "destructive",
         })
       }
@@ -96,6 +104,13 @@ export function MindMapGenerator() {
         </TabsList>
 
         <TabsContent value="prompt" className="mt-0">
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="border rounded-lg p-4 mb-4">
             <Textarea
               placeholder="Descreva o que você quer gerar..."
@@ -187,7 +202,7 @@ export function MindMapGenerator() {
             </div>
           </div>
 
-          {!mindMapData && !isPending && (
+          {!mindMapData && !isPending && !error && (
             <>
               <div className="text-sm text-muted-foreground mb-4 text-center">Exemplos de Prompts</div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -236,6 +251,7 @@ export function MindMapGenerator() {
           )}
         </TabsContent>
 
+        {/* Outras abas permanecem inalteradas */}
         <TabsContent value="pdf">
           <div className="flex flex-col items-center justify-center p-12 border rounded-lg border-dashed">
             <FileText className="w-12 h-12 text-muted-foreground mb-4" />
