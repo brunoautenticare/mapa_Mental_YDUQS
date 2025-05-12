@@ -38,9 +38,11 @@ export function MindMapGenerator() {
 
     startTransition(async () => {
       try {
+        console.log("Iniciando geração do mapa mental...")
         const result = await generateMindMap(formData)
 
         if (result.error) {
+          console.error("Erro retornado pela API:", result.error)
           setError(result.error)
           toast({
             title: "Erro",
@@ -51,6 +53,7 @@ export function MindMapGenerator() {
         }
 
         if (result.data) {
+          console.log("Mapa mental gerado com sucesso!")
           setMindMapData(result.data)
           toast({
             title: "Sucesso",
@@ -58,7 +61,7 @@ export function MindMapGenerator() {
           })
         }
       } catch (error) {
-        console.error("Erro ao gerar mapa mental:", error)
+        console.error("Erro detalhado ao gerar mapa mental:", error)
         const errorMessage = error.message || "Falha ao gerar o mapa mental. Por favor, tente novamente."
         setError(errorMessage)
         toast({
