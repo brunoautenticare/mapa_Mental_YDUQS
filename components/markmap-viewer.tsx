@@ -11,12 +11,37 @@ interface MarkmapViewerProps {
   data: any
   width?: string | number
   height?: string | number
+  colorPalette?: string
 }
 
-export function MarkmapViewer({ data, width = "100%", height = 500 }: MarkmapViewerProps) {
+export function MarkmapViewer({ data, width = "100%", height = 500, colorPalette = "default" }: MarkmapViewerProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const markmapRef = useRef<Markmap | null>(null)
   const [markdown, setMarkdown] = useState<string>("")
+
+  // Função para obter cores com base na paleta selecionada
+  const getColorsByPalette = (palette: string) => {
+    switch (palette) {
+      case "blue":
+        return ["#1e40af", "#3b82f6", "#93c5fd", "#dbeafe"]
+      case "green":
+        return ["#166534", "#22c55e", "#86efac", "#dcfce7"]
+      case "red":
+        return ["#991b1b", "#ef4444", "#fca5a5", "#fee2e2"]
+      case "purple":
+        return ["#6b21a8", "#a855f7", "#d8b4fe", "#f3e8ff"]
+      case "orange":
+        return ["#9a3412", "#f97316", "#fdba74", "#ffedd5"]
+      case "rainbow":
+        return ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7"]
+      case "pastel":
+        return ["#f87171", "#fdba74", "#fde047", "#86efac", "#93c5fd", "#d8b4fe"]
+      case "earth":
+        return ["#78350f", "#a16207", "#15803d", "#166534", "#1e3a8a"]
+      default:
+        return ["#4f46e5", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"]
+    }
+  }
 
   // Converter a estrutura de dados em markdown
   useEffect(() => {
@@ -47,6 +72,9 @@ export function MarkmapViewer({ data, width = "100%", height = 500 }: MarkmapVie
   useEffect(() => {
     if (!svgRef.current || !markdown) return
 
+    // Obter as cores da paleta selecionada
+    const colors = getColorsByPalette(colorPalette)
+
     // Limpar SVG existente
     if (markmapRef.current) {
       // Se já existe um markmap, atualize-o
@@ -59,20 +87,33 @@ export function MarkmapViewer({ data, width = "100%", height = 500 }: MarkmapVie
         console.error("Erro ao atualizar markmap:", error)
       }
     } else {
-      // Criar um novo markmap
+      // Criar um novo markmap com configurações personalizadas
       try {
         const transformer = new Transformer()
         const { root } = transformer.transform(markdown)
+
         const mm = Markmap.create(
           svgRef.current,
           {
             autoFit: true,
             color: (node: any) => {
               // Cores baseadas no nível do nó
-              const colors = ["#4f46e5", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"]
               const level = node.state.depth || 0
               return colors[level % colors.length]
             },
+            duration: 500, // Duração da animação em ms
+            nodeFont: "300 16px/20px sans-serif",
+            nodeMinHeight: 16,
+            spacingHorizontal: 80,
+            spacingVertical: 5,
+            initialExpandLevel: 2, // Expandir automaticamente até o nível 2
+            linkShape: "diagonal", // Forma das linhas: 'diagonal' ou 'bracket'
+            linkWidth: (node: any) => {
+              // Largura da linha baseada no nível do nó
+              const level = node.state.depth || 0
+              return 3 - level * 0.5
+            },
+            paddingX: 8,
           },
           root as INode,
         )
@@ -86,7 +127,7 @@ export function MarkmapViewer({ data, width = "100%", height = 500 }: MarkmapVie
     return () => {
       // Não é necessário limpar o markmap, ele será substituído ou atualizado
     }
-  }, [markdown])
+  }, [markdown, colorPalette])
 
   // Função para exportar o diagrama como Markdown
   const exportAsMarkdown = () => {
@@ -146,6 +187,13 @@ export function MarkmapViewer({ data, width = "100%", height = 500 }: MarkmapVie
     img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData)
   }
 
+  // Função para ajustar a visualização
+  const handleFitView = () => {
+    if (markmapRef.current) {
+      markmapRef.current.fit()
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div
@@ -171,13 +219,17 @@ export function MarkmapViewer({ data, width = "100%", height = 500 }: MarkmapVie
         )}
       </div>
 
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between">
+        <Button variant="outline" onClick={handleFitView} disabled={!data}>
+          Ajustar Visualização
+        </Button>
+
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={exportAsPNG} data-testid="export-png-button">
+          <Button variant="outline" onClick={exportAsPNG} disabled={!data} data-testid="export-png-button">
             <Download className="h-4 w-4 mr-2" />
             Exportar PNG
           </Button>
-          <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button">
+          <Button variant="outline" onClick={exportAsMarkdown} disabled={!data} data-testid="export-markdown-button">
             <FileText className="h-4 w-4 mr-2" />
             Exportar Markdown
           </Button>
