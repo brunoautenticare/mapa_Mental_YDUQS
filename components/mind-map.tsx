@@ -617,20 +617,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
 
   // Renderizar Markmap se o tipo de diagrama for "markdown"
   if (diagramType === "markdown") {
-    return (
-      <div className="flex flex-col gap-4" data-testid="mind-map-component">
-        <MarkmapViewer data={data} height={500} />
-
-        <div className="flex items-center justify-end">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button">
-              <FileText className="h-4 w-4 mr-2" />
-              Exportar Markdown
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
+    return <MarkmapViewer data={data} height={500} />
   }
 
   return (
