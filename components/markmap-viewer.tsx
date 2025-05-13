@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react"
 import { Transformer } from "markmap-lib"
 import { Markmap } from "markmap-view"
-import "markmap-view/style/view.css"
+// Removendo a importação direta do CSS que está causando o erro
+// import "markmap-view/style/view.css"
 
 interface MarkmapViewerProps {
   data: any
@@ -27,7 +28,29 @@ export function MarkmapViewer({ data, width = "100%", height = 500 }: MarkmapVie
     const { root } = transformer.transform(markdownText)
 
     // Criar e renderizar o Markmap
-    markmapRef.current = Markmap.create(svgRef.current, undefined, root)
+    markmapRef.current = Markmap.create(
+      svgRef.current,
+      {
+        // Adicionando estilos inline para substituir a necessidade do CSS externo
+        style: `
+        .markmap-node {
+          cursor: pointer;
+        }
+        .markmap-node-circle {
+          fill: #fff;
+          stroke-width: 1.5;
+        }
+        .markmap-node-text {
+          fill: #000;
+          font: 10px sans-serif;
+        }
+        .markmap-link {
+          fill: none;
+        }
+      `,
+      },
+      root,
+    )
 
     // Ajustar visualização
     setTimeout(() => {

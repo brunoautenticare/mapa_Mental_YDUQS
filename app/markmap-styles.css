@@ -1,0 +1,18 @@
+/* Estilos para o Markmap */
+.markmap-node {
+  cursor: pointer;
+}
+
+.markmap-node-circle {
+  fill: #fff;
+  stroke-width: 1.5;
+}
+
+.markmap-node-text {
+  fill: #000;
+  font: 10px sans-serif;
+}
+
+.markmap-link {
+  fill: none;
+}
