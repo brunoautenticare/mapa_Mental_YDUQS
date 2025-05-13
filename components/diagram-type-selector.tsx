@@ -15,6 +15,7 @@ export function DiagramTypeSelector({ value, onChange }: DiagramTypeSelectorProp
     { id: "mind-map", label: "Mapa mental", icon: "🧠" },
     { id: "fishbone", label: "Diagrama espinha de peixe", icon: "🐟" },
     { id: "markdown", label: "Markdown", icon: "📝" },
+    { id: "horizontal", label: "Horizontal", icon: "↔️" },
   ]
 
   return (

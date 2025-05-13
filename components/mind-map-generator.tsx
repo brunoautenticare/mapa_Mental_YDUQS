@@ -133,6 +133,7 @@ export function MindMapGenerator() {
                       { id: "logical-structure-left", label: "Estrutura lógica (Esq)", icon: "🔄" },
                       { id: "fishbone", label: "Espinha de peixe", icon: "🐟" },
                       { id: "markdown", label: "Markdown", icon: "📝" },
+                      { id: "horizontal", label: "Horizontal", icon: "↔️" },
                     ].map((type) => (
                       <Button
                         key={type.id}

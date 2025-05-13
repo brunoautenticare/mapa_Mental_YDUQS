@@ -1,74 +1,24 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import { Transformer } from "markmap-lib"
-import { Markmap } from "markmap-view"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Download, FileText } from "lucide-react"
+import { Transformer } from "markmap-lib"
+import { Markmap } from "markmap-view"
+import { toPng } from "html-to-image"
 
 interface MarkmapViewerProps {
   data: any
-  width?: string | number
   height?: string | number
-  onExportMarkdown?: () => void
 }
 
-export function MarkmapViewer({ data, width = "100%", height = 500, onExportMarkdown }: MarkmapViewerProps) {
-  const svgRef = useRef<SVGSVGElement>(null)
+export function MarkmapViewer({ data, height = 500 }: MarkmapViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const markmapRef = useRef<Markmap | null>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const markmapRef = useRef<any>(null)
+  const [isLoaded, setIsLoaded] = useState(false)
 
-  useEffect(() => {
-    if (!svgRef.current || !data) return
-
-    // Limpar SVG existente
-    svgRef.current.innerHTML = ""
-
-    // Converter dados para formato Markmap
-    const transformer = new Transformer()
-    const markdownText = convertToMarkdown(data)
-    const { root } = transformer.transform(markdownText)
-
-    // Criar e renderizar o Markmap
-    markmapRef.current = Markmap.create(
-      svgRef.current,
-      {
-        // Adicionando estilos inline para substituir a necessidade do CSS externo
-        style: `
-        .markmap-node {
-          cursor: pointer;
-        }
-        .markmap-node-circle {
-          fill: #fff;
-          stroke-width: 1.5;
-        }
-        .markmap-node-text {
-          fill: #000;
-          font: 10px sans-serif;
-        }
-        .markmap-link {
-          fill: none;
-        }
-      `,
-      },
-      root,
-    )
-
-    // Ajustar visualização
-    setTimeout(() => {
-      if (markmapRef.current) {
-        markmapRef.current.fit()
-      }
-    }, 100)
-
-    return () => {
-      if (markmapRef.current) {
-        // Limpar recursos se necessário
-      }
-    }
-  }, [data])
-
-  // Função para converter dados do mapa mental para formato Markdown
+  // Função para converter a estrutura de dados do mapa mental para formato Markdown
   const convertToMarkdown = (node: any, level = 0): string => {
     if (!node) return ""
 
@@ -86,80 +36,72 @@ export function MarkmapViewer({ data, width = "100%", height = 500, onExportMark
     return markdown
   }
 
-  // Função para exportar o diagrama como PNG
-  const exportAsPNG = () => {
-    if (!svgRef.current) return
+  // Efeito para renderizar o Markmap quando os dados mudam
+  useEffect(() => {
+    if (!data || !svgRef.current) return
 
-    const svgData = new XMLSerializer().serializeToString(svgRef.current)
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")
+    // Converter dados para Markdown
+    const markdown = convertToMarkdown(data)
 
-    const img = new Image()
-    img.onload = () => {
-      // Definir dimensões do canvas
-      const svgRect = svgRef.current?.getBoundingClientRect() || { width: 800, height: 500 }
-      canvas.width = svgRect.width
-      canvas.height = svgRect.height
+    // Criar transformador e processar o Markdown
+    const transformer = new Transformer()
+    const { root } = transformer.transform(markdown)
 
-      // Desenhar o fundo pontilhado
-      if (ctx) {
-        ctx.fillStyle = "#ffffff"
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-        // Desenhar os pontos
-        ctx.fillStyle = "#e5e7eb"
-        for (let x = 0; x < canvas.width; x += 20) {
-          for (let y = 0; y < canvas.height; y += 20) {
-            ctx.beginPath()
-            ctx.arc(x, y, 1, 0, 2 * Math.PI)
-            ctx.fill()
-          }
-        }
-
-        // Desenhar o SVG
-        ctx.drawImage(img, 0, 0)
-
-        // Converter para PNG e fazer download
-        const link = document.createElement("a")
-        link.download = "mind-map.png"
-        link.href = canvas.toDataURL("image/png")
-        link.click()
-      }
+    // Limpar SVG existente
+    if (svgRef.current) {
+      svgRef.current.innerHTML = ""
     }
 
-    img.crossOrigin = "anonymous"
-    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData)
+    // Criar novo Markmap
+    if (svgRef.current) {
+      const mm = Markmap.create(
+        svgRef.current,
+        {
+          autoFit: true,
+          color: (node: any) => {
+            // Cores baseadas no nível do nó
+            const colors = ["#4f46e5", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"]
+            return colors[Math.min(node.depth, colors.length - 1)]
+          },
+        },
+        root,
+      )
+
+      // Salvar referência ao Markmap
+      markmapRef.current = mm
+      setIsLoaded(true)
+    }
+  }, [data])
+
+  // Função para exportar como PNG
+  const exportAsPNG = async () => {
+    if (!containerRef.current) return
+
+    try {
+      const dataUrl = await toPng(containerRef.current, {
+        backgroundColor: "#ffffff",
+        pixelRatio: 2,
+      })
+
+      const link = document.createElement("a")
+      link.download = "markmap.png"
+      link.href = dataUrl
+      link.click()
+    } catch (error) {
+      console.error("Erro ao exportar PNG:", error)
+    }
   }
 
-  // Função para exportar o diagrama como Markdown
+  // Função para exportar como Markdown
   const exportAsMarkdown = () => {
     if (!data) return
 
-    // Função recursiva para gerar Markdown a partir da estrutura de dados
-    const generateMarkdown = (node: any, level = 1) => {
-      // Usar # para títulos com base no nível
-      const heading = "#".repeat(Math.min(level, 6)) + " "
-      let markdown = heading + node.name + "\n\n"
-
-      // Processar filhos recursivamente
-      if (node.children && node.children.length > 0) {
-        node.children.forEach((child) => {
-          markdown += generateMarkdown(child, level + 1)
-        })
-      }
-
-      return markdown
-    }
-
-    // Gerar o conteúdo Markdown
-    const markdownContent = generateMarkdown(data)
-
-    // Criar um blob e fazer download
-    const blob = new Blob([markdownContent], { type: "text/markdown" })
+    const markdown = convertToMarkdown(data)
+    const blob = new Blob([markdown], { type: "text/markdown" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = "mind-map.md"
+    link.download = "markmap.md"
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -168,22 +110,32 @@ export function MarkmapViewer({ data, width = "100%", height = 500, onExportMark
     <div className="flex flex-col gap-4">
       <div
         ref={containerRef}
-        className="w-full h-[500px] border rounded-lg relative bg-white overflow-hidden"
+        className="w-full border rounded-lg relative bg-white overflow-hidden"
         style={{
+          height: typeof height === "number" ? `${height}px` : height,
           backgroundImage: "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
           backgroundSize: "20px 20px",
         }}
       >
-        <svg ref={svgRef} width={width} height={height} className="w-full h-full" style={{ minHeight: "400px" }} />
+        <svg
+          ref={svgRef}
+          width="100%"
+          height="100%"
+          style={{
+            display: "block",
+            maxWidth: "100%",
+            maxHeight: "100%",
+          }}
+        />
       </div>
 
       <div className="flex items-center justify-end">
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={exportAsPNG} data-testid="export-png-button">
+          <Button variant="outline" onClick={exportAsPNG} disabled={!isLoaded}>
             <Download className="h-4 w-4 mr-2" />
             Exportar PNG
           </Button>
-          <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button">
+          <Button variant="outline" onClick={exportAsMarkdown} disabled={!isLoaded}>
             <FileText className="h-4 w-4 mr-2" />
             Exportar Markdown
           </Button>

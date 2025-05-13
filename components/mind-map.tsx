@@ -8,6 +8,7 @@ import { ZoomIn, ZoomOut, RotateCcw, Download, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { MarkmapViewer } from "@/components/markmap-viewer"
+import { HorizontalMindMap } from "@/components/horizontal-mind-map"
 
 interface MindMapNode {
   id: string
@@ -23,6 +24,16 @@ interface MindMapProps {
 }
 
 export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMapProps) {
+  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
+  if (diagramType === "horizontal") {
+    return <HorizontalMindMap data={data} colorPalette={colorPalette} />
+  }
+
+  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
+  if (diagramType === "markdown") {
+    return <MarkmapViewer data={data} height={500} />
+  }
+
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const diagramRef = useRef<SVGGElement | null>(null)
@@ -614,11 +625,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
   useEffect(() => {
     setNodeShape(getNodeShape(layoutStyle))
   }, [getNodeShape, layoutStyle])
-
-  // Renderizar Markmap se o tipo de diagrama for "markdown"
-  if (diagramType === "markdown") {
-    return <MarkmapViewer data={data} height={500} />
-  }
 
   return (
     <div className="flex flex-col gap-4" data-testid="mind-map-component">
