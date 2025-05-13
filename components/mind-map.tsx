@@ -24,6 +24,16 @@ interface MindMapProps {
 }
 
 export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMapProps) {
+  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
+  if (diagramType === "horizontal") {
+    return <HorizontalMindMap data={data} colorPalette={colorPalette} />
+  }
+
+  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
+  if (diagramType === "markdown") {
+    return <MarkmapViewer data={data} height={500} />
+  }
+
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const diagramRef = useRef<SVGGElement | null>(null)
@@ -38,16 +48,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
   // Usar refs para evitar re-renderizações desnecessárias
   const dataIdRef = useRef("")
   const initialPositionAppliedRef = useRef(false)
-
-  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
-  if (diagramType === "horizontal") {
-    return <HorizontalMindMap data={data} colorPalette={colorPalette} />
-  }
-
-  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
-  if (diagramType === "markdown") {
-    return <MarkmapViewer data={data} height={500} colorPalette={colorPalette} />
-  }
 
   // Função para obter cores com base na paleta selecionada
   const getColorsByPalette = useCallback((palette: string) => {
@@ -111,7 +111,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
 
         // Extrair valores de transformação
         if (transform) {
-          const match = transform.match(/translate\$$([^,]+),([^)]+)\$$/)
+          const match = transform.match(/translate$$([^,]+),([^)]+)$$/)
           if (match) {
             x = Number.parseFloat(match[1])
             y = Number.parseFloat(match[2])
