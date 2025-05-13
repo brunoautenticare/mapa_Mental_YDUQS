@@ -1,8 +1,11 @@
 "use client"
 
-import { useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Download, FileText } from "lucide-react"
+import { Transformer } from "markmap-lib"
+import { Markmap } from "markmap-view"
+import type { INode } from "markmap-common"
 
 interface MarkmapViewerProps {
   data: any
@@ -10,63 +13,87 @@ interface MarkmapViewerProps {
   height?: string | number
 }
 
-// Versão simplificada do MarkmapViewer que não usa as bibliotecas externas
 export function MarkmapViewer({ data, width = "100%", height = 500 }: MarkmapViewerProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const markmapRef = useRef<Markmap | null>(null)
+  const [markdown, setMarkdown] = useState<string>("")
 
-  // Função para renderizar a estrutura do mapa mental de forma simples
-  const renderMarkdownStructure = (node: any, level = 0) => {
-    if (!node) return null
-
-    const headingLevel = Math.min(level + 1, 6)
-    const headingSymbol = "#".repeat(headingLevel)
-
-    return (
-      <div key={node.id} style={{ marginLeft: level * 20 + "px", marginBottom: "10px" }}>
-        <div className="flex items-center">
-          <span className="font-mono mr-2 font-bold" style={{ color: getColorForLevel(level) }}>
-            {headingSymbol}
-          </span>
-          <span className="font-medium">{node.name}</span>
-        </div>
-        {node.children && node.children.length > 0 && (
-          <div className="mt-2">{node.children.map((child: any) => renderMarkdownStructure(child, level + 1))}</div>
-        )}
-      </div>
-    )
-  }
-
-  // Função para obter cor com base no nível
-  const getColorForLevel = (level: number) => {
-    const colors = ["#4f46e5", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"]
-    return colors[level % colors.length]
-  }
-
-  // Função para exportar o diagrama como Markdown
-  const exportAsMarkdown = () => {
+  // Converter a estrutura de dados em markdown
+  useEffect(() => {
     if (!data) return
 
     // Função recursiva para gerar Markdown a partir da estrutura de dados
     const generateMarkdown = (node: any, level = 1) => {
       // Usar # para títulos com base no nível
       const heading = "#".repeat(Math.min(level, 6)) + " "
-      let markdown = heading + node.name + "\n\n"
+      let md = heading + node.name + "\n\n"
 
       // Processar filhos recursivamente
       if (node.children && node.children.length > 0) {
         node.children.forEach((child: any) => {
-          markdown += generateMarkdown(child, level + 1)
+          md += generateMarkdown(child, level + 1)
         })
       }
 
-      return markdown
+      return md
     }
 
     // Gerar o conteúdo Markdown
     const markdownContent = generateMarkdown(data)
+    setMarkdown(markdownContent)
+  }, [data])
+
+  // Renderizar o markmap quando o markdown mudar
+  useEffect(() => {
+    if (!svgRef.current || !markdown) return
+
+    // Limpar SVG existente
+    if (markmapRef.current) {
+      // Se já existe um markmap, atualize-o
+      try {
+        const transformer = new Transformer()
+        const { root } = transformer.transform(markdown)
+        markmapRef.current.setData(root as INode)
+        markmapRef.current.fit()
+      } catch (error) {
+        console.error("Erro ao atualizar markmap:", error)
+      }
+    } else {
+      // Criar um novo markmap
+      try {
+        const transformer = new Transformer()
+        const { root } = transformer.transform(markdown)
+        const mm = Markmap.create(
+          svgRef.current,
+          {
+            autoFit: true,
+            color: (node: any) => {
+              // Cores baseadas no nível do nó
+              const colors = ["#4f46e5", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"]
+              const level = node.state.depth || 0
+              return colors[level % colors.length]
+            },
+          },
+          root as INode,
+        )
+        markmapRef.current = mm
+      } catch (error) {
+        console.error("Erro ao criar markmap:", error)
+      }
+    }
+
+    // Cleanup
+    return () => {
+      // Não é necessário limpar o markmap, ele será substituído ou atualizado
+    }
+  }, [markdown])
+
+  // Função para exportar o diagrama como Markdown
+  const exportAsMarkdown = () => {
+    if (!markdown) return
 
     // Criar um blob e fazer download
-    const blob = new Blob([markdownContent], { type: "text/markdown" })
+    const blob = new Blob([markdown], { type: "text/markdown" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
@@ -75,28 +102,73 @@ export function MarkmapViewer({ data, width = "100%", height = 500 }: MarkmapVie
     URL.revokeObjectURL(url)
   }
 
-  // Função simplificada para exportar como PNG (apenas um placeholder)
+  // Função para exportar como PNG
   const exportAsPNG = () => {
-    alert("Exportação para PNG desativada temporariamente. Será reativada no deploy.")
+    if (!svgRef.current) return
+
+    const svgData = new XMLSerializer().serializeToString(svgRef.current)
+    const canvas = document.createElement("canvas")
+    const ctx = canvas.getContext("2d")
+
+    const img = new Image()
+    img.onload = () => {
+      canvas.width = svgRef.current!.clientWidth * 2 // Maior resolução
+      canvas.height = svgRef.current!.clientHeight * 2 // Maior resolução
+
+      if (ctx) {
+        // Desenhar fundo branco
+        ctx.fillStyle = "#ffffff"
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+        // Desenhar o fundo pontilhado
+        ctx.fillStyle = "#e5e7eb"
+        for (let x = 0; x < canvas.width; x += 20) {
+          for (let y = 0; y < canvas.height; y += 20) {
+            ctx.beginPath()
+            ctx.arc(x, y, 1, 0, 2 * Math.PI)
+            ctx.fill()
+          }
+        }
+
+        // Desenhar o SVG com escala 2x para melhor qualidade
+        ctx.scale(2, 2)
+        ctx.drawImage(img, 0, 0)
+
+        // Converter para PNG e fazer download
+        const link = document.createElement("a")
+        link.download = "mind-map.png"
+        link.href = canvas.toDataURL("image/png")
+        link.click()
+      }
+    }
+
+    img.crossOrigin = "anonymous"
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData)
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div
-        ref={containerRef}
-        className="w-full h-[500px] border rounded-lg relative bg-white overflow-auto p-6"
+        className="w-full h-[500px] border rounded-lg relative bg-white overflow-hidden"
         style={{
           backgroundImage: "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
           backgroundSize: "20px 20px",
         }}
       >
-        <div className="markdown-preview">
-          {data ? (
-            renderMarkdownStructure(data)
-          ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground">Nenhum dado disponível</div>
-          )}
-        </div>
+        {data ? (
+          <svg
+            ref={svgRef}
+            width="100%"
+            height="100%"
+            style={{
+              display: "block",
+              maxWidth: "100%",
+              maxHeight: "100%",
+            }}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full text-muted-foreground">Nenhum dado disponível</div>
+        )}
       </div>
 
       <div className="flex items-center justify-end">
