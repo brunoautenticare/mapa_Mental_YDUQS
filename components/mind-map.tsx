@@ -250,18 +250,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
           .size([2 * Math.PI, Math.min(width, height) / 3]) // Layout circular
           .separation((a, b) => (a.parent === b.parent ? 1 : 2) / a.depth)
         break
-      case "org-chart":
-        layout = d3.tree().size([width - margin.right - margin.left, height - margin.top - margin.bottom])
-        break
-      case "catalog":
-        layout = d3.cluster().size([height - margin.top - margin.bottom, width - margin.right - margin.left])
-        break
-      case "timeline":
-        layout = d3.tree().size([height - margin.top - margin.bottom, width - margin.right - margin.left])
-        break
-      case "vertical-timeline":
-        layout = d3.tree().size([width - margin.right - margin.left, height - margin.top - margin.bottom])
-        break
       case "fishbone":
         layout = d3.tree().size([height - margin.top - margin.bottom, width - margin.right - margin.left])
         break
@@ -291,9 +279,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
     } else if (diagramType === "logical-structure-left") {
       // Para estrutura lógica à esquerda, invertemos a direção
       svg.attr("transform", `translate(${width - margin.right},${margin.top})`)
-    } else if (diagramType === "org-chart" || diagramType === "vertical-timeline") {
-      // Para gráficos organizacionais e linhas do tempo verticais
-      svg.attr("transform", `translate(${margin.left},${margin.top})`)
     } else {
       // Para outros tipos
       svg.attr("transform", `translate(${margin.left},${margin.top})`)
@@ -320,26 +305,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
             .linkHorizontal()
             .x((d: any) => -d.y)
             .y((d: any) => d.x)(d)
-        case "org-chart":
-          return d3
-            .linkVertical()
-            .x((d: any) => d.x)
-            .y((d: any) => d.y)(d)
-        case "catalog":
-          return d3
-            .linkHorizontal()
-            .x((d: any) => d.y)
-            .y((d: any) => d.x)(d)
-        case "timeline":
-          return d3
-            .linkHorizontal()
-            .x((d: any) => d.y)
-            .y((d: any) => d.x)(d)
-        case "vertical-timeline":
-          return d3
-            .linkVertical()
-            .x((d: any) => d.x)
-            .y((d: any) => d.y)(d)
         case "fishbone":
           // Diagrama espinha de peixe (fishbone)
           const source = { x: d.source.x, y: d.source.y }
@@ -381,8 +346,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
           return `translate(${d.y * Math.sin(d.x)},${-d.y * Math.cos(d.x)})`
         } else if (diagramType === "logical-structure-left") {
           return `translate(${-d.y},${d.x})`
-        } else if (diagramType === "org-chart" || diagramType === "vertical-timeline") {
-          return `translate(${d.x},${d.y})`
         } else {
           return `translate(${d.y},${d.x})`
         }

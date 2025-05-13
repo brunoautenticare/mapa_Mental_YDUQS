@@ -131,10 +131,6 @@ export function MindMapGenerator() {
                       { id: "mind-map", label: "Mapa mental", icon: "🧠" },
                       { id: "logical-structure", label: "Estrutura lógica", icon: "🔄" },
                       { id: "logical-structure-left", label: "Estrutura lógica (Esq)", icon: "🔄" },
-                      { id: "org-chart", label: "Estrutura organizacional", icon: "📊" },
-                      { id: "catalog", label: "Organização de catálogo", icon: "📑" },
-                      { id: "timeline", label: "Linha do tempo", icon: "⏱️" },
-                      { id: "vertical-timeline", label: "Linha do tempo vertical", icon: "⏱️" },
                       { id: "fishbone", label: "Espinha de peixe", icon: "🐟" },
                     ].map((type) => (
                       <Button

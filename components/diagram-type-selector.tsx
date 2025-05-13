@@ -13,10 +13,6 @@ export function DiagramTypeSelector({ value, onChange }: DiagramTypeSelectorProp
     { id: "logical-structure", label: "Estrutura lógica", icon: "🔄" },
     { id: "logical-structure-left", label: "Estrutura lógica (Esquerda)", icon: "🔄" },
     { id: "mind-map", label: "Mapa mental", icon: "🧠" },
-    { id: "org-chart", label: "Estrutura organizacional", icon: "📊" },
-    { id: "catalog", label: "Organização de catálogo", icon: "📑" },
-    { id: "timeline", label: "Linha do tempo", icon: "⏱️" },
-    { id: "vertical-timeline", label: "Linha do tempo vertical", icon: "⏱️" },
     { id: "fishbone", label: "Diagrama espinha de peixe", icon: "🐟" },
   ]
 
