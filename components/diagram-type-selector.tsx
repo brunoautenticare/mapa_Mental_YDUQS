@@ -14,6 +14,7 @@ export function DiagramTypeSelector({ value, onChange }: DiagramTypeSelectorProp
     { id: "logical-structure-left", label: "Estrutura lógica (Esquerda)", icon: "🔄" },
     { id: "mind-map", label: "Mapa mental", icon: "🧠" },
     { id: "fishbone", label: "Diagrama espinha de peixe", icon: "🐟" },
+    { id: "markdown", label: "Markdown", icon: "📝" },
   ]
 
   return (

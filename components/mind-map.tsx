@@ -4,9 +4,10 @@ import type React from "react"
 
 import { useEffect, useRef, useState, useCallback } from "react"
 import * as d3 from "d3"
-import { ZoomIn, ZoomOut, RotateCcw, Download } from "lucide-react"
+import { ZoomIn, ZoomOut, RotateCcw, Download, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
+import { MarkmapViewer } from "@/components/markmap-viewer"
 
 interface MindMapNode {
   id: string
@@ -30,6 +31,8 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [diagramSize, setDiagramSize] = useState({ width: 0, height: 0 })
+  const [colors, setColors] = useState<string[]>([])
+  const [nodeShape, setNodeShape] = useState<string>("circle")
 
   // Usar refs para evitar re-renderizações desnecessárias
   const dataIdRef = useRef("")
@@ -225,9 +228,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
     // Criar hierarquia
     const root = d3.hierarchy(data)
 
-    // Obter cores com base na paleta selecionada
-    const colors = getColorsByPalette(colorPalette)
-
     // Definir layout com base no tipo de diagrama
     let layout: any
     let isRadial = false
@@ -352,17 +352,17 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
       })
 
     // Aplicar estilo de layout
-    const nodeShape = getNodeShape(layoutStyle)
+    const nodeShapeType = getNodeShape(layoutStyle)
 
     // Adicionar formas para os nós com base no estilo de layout
-    if (nodeShape === "circle") {
+    if (nodeShapeType === "circle") {
       nodes
         .append("circle")
         .attr("r", 5)
         .attr("fill", (d: any) => colors[d.depth % colors.length])
         .attr("stroke", "#fff")
         .attr("stroke-width", 2)
-    } else if (nodeShape === "rect") {
+    } else if (nodeShapeType === "rect") {
       nodes
         .append("rect")
         .attr("x", -30)
@@ -374,7 +374,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
         .attr("fill", (d: any) => colors[d.depth % colors.length])
         .attr("stroke", "#fff")
         .attr("stroke-width", 2)
-    } else if (nodeShape === "diamond") {
+    } else if (nodeShapeType === "diamond") {
       nodes
         .append("polygon")
         .attr("points", "0,-10 10,0 0,10 -10,0")
@@ -390,7 +390,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
       .attr("x", (d: any) => {
         if (diagramType === "logical-structure-left") {
           return d.children ? 8 : -8
-        } else if (nodeShape === "rect") {
+        } else if (nodeShapeType === "rect") {
           return 0
         } else {
           return d.children ? -8 : 8
@@ -399,20 +399,53 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
       .attr("text-anchor", (d: any) => {
         if (diagramType === "logical-structure-left") {
           return d.children ? "start" : "end"
-        } else if (nodeShape === "rect") {
+        } else if (nodeShapeType === "rect") {
           return "middle"
         } else {
           return d.children ? "end" : "start"
         }
       })
-      .attr("y", nodeShape === "rect" ? 0 : undefined)
-      .attr("dominant-baseline", nodeShape === "rect" ? "middle" : undefined)
+      .attr("y", nodeShapeType === "rect" ? 0 : undefined)
+      .attr("dominant-baseline", nodeShapeType === "rect" ? "middle" : undefined)
       .text((d: any) => d.data.name)
       .attr("font-size", "12px")
-      .attr("fill", nodeShape === "rect" ? "#fff" : "#333")
+      .attr("fill", nodeShapeType === "rect" ? "#fff" : "#333")
 
     return isNewData
-  }, [data, diagramType, colorPalette, layoutStyle, getColorsByPalette, getNodeShape])
+  }, [colors, data, diagramType, getNodeShape, layoutStyle])
+
+  // Função para exportar o diagrama como Markdown
+  function exportAsMarkdown() {
+    if (!data) return
+
+    // Função recursiva para gerar Markdown a partir da estrutura de dados
+    const generateMarkdown = (node: MindMapNode, level = 1) => {
+      // Usar # para títulos com base no nível
+      const heading = "#".repeat(Math.min(level, 6)) + " "
+      let markdown = heading + node.name + "\n\n"
+
+      // Processar filhos recursivamente
+      if (node.children && node.children.length > 0) {
+        node.children.forEach((child) => {
+          markdown += generateMarkdown(child, level + 1)
+        })
+      }
+
+      return markdown
+    }
+
+    // Gerar o conteúdo Markdown
+    const markdownContent = generateMarkdown(data)
+
+    // Criar um blob e fazer download
+    const blob = new Blob([markdownContent], { type: "text/markdown" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = "mind-map.md"
+    link.click()
+    URL.revokeObjectURL(url)
+  }
 
   // Efeito para renderizar o diagrama quando os dados ou configurações mudam
   useEffect(() => {
@@ -430,7 +463,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
         centerDiagram()
       }, 200) // Aumentar o timeout para garantir que o diagrama foi completamente renderizado
     }
-  }, [data, diagramType, colorPalette, layoutStyle, renderDiagram, centerDiagram])
+  }, [centerDiagram, colors, data, diagramType, layoutStyle, renderDiagram])
 
   // Efeito para aplicar pan e zoom
   useEffect(() => {
@@ -574,6 +607,32 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
     }
   }, [centerDiagram])
 
+  useEffect(() => {
+    setColors(getColorsByPalette(colorPalette))
+  }, [colorPalette, getColorsByPalette])
+
+  useEffect(() => {
+    setNodeShape(getNodeShape(layoutStyle))
+  }, [getNodeShape, layoutStyle])
+
+  // Renderizar Markmap se o tipo de diagrama for "markdown"
+  if (diagramType === "markdown") {
+    return (
+      <div className="flex flex-col gap-4" data-testid="mind-map-component">
+        <MarkmapViewer data={data} height={500} />
+
+        <div className="flex items-center justify-end">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button">
+              <FileText className="h-4 w-4 mr-2" />
+              Exportar Markdown
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4" data-testid="mind-map-component">
       <div
@@ -654,6 +713,10 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
           <Button variant="outline" onClick={exportAsPNG} data-testid="export-button">
             <Download className="h-4 w-4 mr-2" />
             Exportar PNG
+          </Button>
+          <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button">
+            <FileText className="h-4 w-4 mr-2" />
+            Exportar Markdown
           </Button>
         </div>
       </div>
