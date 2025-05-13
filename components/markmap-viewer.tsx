@@ -1,141 +1,111 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Download, FileText } from "lucide-react"
-import { Transformer } from "markmap-lib"
-import { Markmap } from "markmap-view"
-import { toPng } from "html-to-image"
 
 interface MarkmapViewerProps {
   data: any
+  width?: string | number
   height?: string | number
 }
 
-export function MarkmapViewer({ data, height = 500 }: MarkmapViewerProps) {
+// Versão simplificada do MarkmapViewer que não usa as bibliotecas externas
+export function MarkmapViewer({ data, width = "100%", height = 500 }: MarkmapViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const svgRef = useRef<SVGSVGElement>(null)
-  const markmapRef = useRef<any>(null)
-  const [isLoaded, setIsLoaded] = useState(false)
 
-  // Função para converter a estrutura de dados do mapa mental para formato Markdown
-  const convertToMarkdown = (node: any, level = 0): string => {
-    if (!node) return ""
+  // Função para renderizar a estrutura do mapa mental de forma simples
+  const renderMarkdownStructure = (node: any, level = 0) => {
+    if (!node) return null
 
-    // Criar cabeçalho Markdown com base no nível
-    const heading = "#".repeat(level + 1)
-    let markdown = `${heading} ${node.name}\n\n`
+    const headingLevel = Math.min(level + 1, 6)
+    const headingSymbol = "#".repeat(headingLevel)
 
-    // Processar filhos recursivamente
-    if (node.children && node.children.length > 0) {
-      node.children.forEach((child: any) => {
-        markdown += convertToMarkdown(child, level + 1)
-      })
-    }
-
-    return markdown
+    return (
+      <div key={node.id} style={{ marginLeft: level * 20 + "px", marginBottom: "10px" }}>
+        <div className="flex items-center">
+          <span className="font-mono mr-2 font-bold" style={{ color: getColorForLevel(level) }}>
+            {headingSymbol}
+          </span>
+          <span className="font-medium">{node.name}</span>
+        </div>
+        {node.children && node.children.length > 0 && (
+          <div className="mt-2">{node.children.map((child: any) => renderMarkdownStructure(child, level + 1))}</div>
+        )}
+      </div>
+    )
   }
 
-  // Efeito para renderizar o Markmap quando os dados mudam
-  useEffect(() => {
-    if (!data || !svgRef.current) return
-
-    // Converter dados para Markdown
-    const markdown = convertToMarkdown(data)
-
-    // Criar transformador e processar o Markdown
-    const transformer = new Transformer()
-    const { root } = transformer.transform(markdown)
-
-    // Limpar SVG existente
-    if (svgRef.current) {
-      svgRef.current.innerHTML = ""
-    }
-
-    // Criar novo Markmap
-    if (svgRef.current) {
-      const mm = Markmap.create(
-        svgRef.current,
-        {
-          autoFit: true,
-          color: (node: any) => {
-            // Cores baseadas no nível do nó
-            const colors = ["#4f46e5", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"]
-            return colors[Math.min(node.depth, colors.length - 1)]
-          },
-        },
-        root,
-      )
-
-      // Salvar referência ao Markmap
-      markmapRef.current = mm
-      setIsLoaded(true)
-    }
-  }, [data])
-
-  // Função para exportar como PNG
-  const exportAsPNG = async () => {
-    if (!containerRef.current) return
-
-    try {
-      const dataUrl = await toPng(containerRef.current, {
-        backgroundColor: "#ffffff",
-        pixelRatio: 2,
-      })
-
-      const link = document.createElement("a")
-      link.download = "markmap.png"
-      link.href = dataUrl
-      link.click()
-    } catch (error) {
-      console.error("Erro ao exportar PNG:", error)
-    }
+  // Função para obter cor com base no nível
+  const getColorForLevel = (level: number) => {
+    const colors = ["#4f46e5", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"]
+    return colors[level % colors.length]
   }
 
-  // Função para exportar como Markdown
+  // Função para exportar o diagrama como Markdown
   const exportAsMarkdown = () => {
     if (!data) return
 
-    const markdown = convertToMarkdown(data)
-    const blob = new Blob([markdown], { type: "text/markdown" })
+    // Função recursiva para gerar Markdown a partir da estrutura de dados
+    const generateMarkdown = (node: any, level = 1) => {
+      // Usar # para títulos com base no nível
+      const heading = "#".repeat(Math.min(level, 6)) + " "
+      let markdown = heading + node.name + "\n\n"
+
+      // Processar filhos recursivamente
+      if (node.children && node.children.length > 0) {
+        node.children.forEach((child: any) => {
+          markdown += generateMarkdown(child, level + 1)
+        })
+      }
+
+      return markdown
+    }
+
+    // Gerar o conteúdo Markdown
+    const markdownContent = generateMarkdown(data)
+
+    // Criar um blob e fazer download
+    const blob = new Blob([markdownContent], { type: "text/markdown" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = "markmap.md"
+    link.download = "mind-map.md"
     link.click()
     URL.revokeObjectURL(url)
+  }
+
+  // Função simplificada para exportar como PNG (apenas um placeholder)
+  const exportAsPNG = () => {
+    alert("Exportação para PNG desativada temporariamente. Será reativada no deploy.")
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div
         ref={containerRef}
-        className="w-full border rounded-lg relative bg-white overflow-hidden"
+        className="w-full h-[500px] border rounded-lg relative bg-white overflow-auto p-6"
         style={{
-          height: typeof height === "number" ? `${height}px` : height,
           backgroundImage: "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
           backgroundSize: "20px 20px",
         }}
       >
-        <svg
-          ref={svgRef}
-          width="100%"
-          height="100%"
-          style={{
-            display: "block",
-            maxWidth: "100%",
-            maxHeight: "100%",
-          }}
-        />
+        <div className="markdown-preview">
+          {data ? (
+            renderMarkdownStructure(data)
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground">Nenhum dado disponível</div>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center justify-end">
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={exportAsPNG} disabled={!isLoaded}>
+          <Button variant="outline" onClick={exportAsPNG} data-testid="export-png-button">
             <Download className="h-4 w-4 mr-2" />
             Exportar PNG
           </Button>
-          <Button variant="outline" onClick={exportAsMarkdown} disabled={!isLoaded}>
+          <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button">
             <FileText className="h-4 w-4 mr-2" />
             Exportar Markdown
           </Button>
