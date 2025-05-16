@@ -35,6 +35,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   const [diagramSize, setDiagramSize] = useState({ width: 0, height: 0 })
   const [colors, setColors] = useState<string[]>([])
   const [nodeShape, setNodeShape] = useState<string>("circle")
+  const [initialCenterApplied, setInitialCenterApplied] = useState(false)
 
   // Usar refs para evitar re-renderizações desnecessárias
   const dataIdRef = useRef("")
@@ -42,12 +43,12 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
 
   // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
   if (diagramType === "horizontal") {
-    return <HorizontalMindMap data={data} colorPalette={colorPalette} />
+    return <HorizontalMindMap data={data} colorPalette={colorPalette} fullscreen={fullscreen} />
   }
 
   // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
   if (diagramType === "markdown") {
-    return <MarkmapViewer data={data} height={500} />
+    return <MarkmapViewer data={data} fullscreen={fullscreen} />
   }
 
   // Função para obter cores com base na paleta selecionada
@@ -215,6 +216,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
 
     // Marcar que o posicionamento inicial foi aplicado
     initialPositionAppliedRef.current = true
+    setInitialCenterApplied(true)
   }, [calculateDiagramSize])
 
   // Função para renderizar o diagrama
@@ -228,14 +230,15 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     if (isNewData) {
       dataIdRef.current = currentDataId
       initialPositionAppliedRef.current = false
+      setInitialCenterApplied(false)
     }
 
     // Limpar SVG existente
     d3.select(svgRef.current).selectAll("*").remove()
 
     // Dimensões base do SVG
-    const width = 800
-    const height = 500
+    const width = 1000
+    const height = 800
 
     // Criar hierarquia
     const root = d3.hierarchy(data)
@@ -245,7 +248,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     let isRadial = false
 
     // Configurar margens adequadas para cada tipo de diagrama
-    const margin = { top: 50, right: 150, bottom: 50, left: 150 }
+    const margin = { top: 100, right: 200, bottom: 100, left: 200 }
 
     switch (diagramType) {
       case "logical-structure":
@@ -473,7 +476,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
       // e que todos os elementos do diagrama foram renderizados
       setTimeout(() => {
         centerDiagram()
-      }, 200) // Aumentar o timeout para garantir que o diagrama foi completamente renderizado
+      }, 300) // Aumentar o timeout para garantir que o diagrama foi completamente renderizado
     }
   }, [centerDiagram, colors, data, diagramType, layoutStyle, renderDiagram])
 
@@ -486,6 +489,18 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
       container.attr("transform", `translate(${pan.x}, ${pan.y}) scale(${zoom})`)
     }
   }, [pan, zoom])
+
+  // Efeito para centralizar o diagrama quando o tipo muda
+  useEffect(() => {
+    // Resetar o estado de centralização quando o tipo de diagrama muda
+    setInitialCenterApplied(false)
+    initialPositionAppliedRef.current = false
+
+    // Dar tempo para o diagrama renderizar antes de centralizar
+    setTimeout(() => {
+      centerDiagram()
+    }, 300)
+  }, [diagramType, centerDiagram])
 
   // Funções de controle de zoom e pan
   const handleZoomIn = () => {
@@ -574,8 +589,8 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
 
     const img = new Image()
     img.onload = () => {
-      canvas.width = 800
-      canvas.height = 500
+      canvas.width = 1000
+      canvas.height = 800
 
       // Desenhar o fundo pontilhado
       if (ctx) {
@@ -626,6 +641,16 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   useEffect(() => {
     setNodeShape(getNodeShape(layoutStyle))
   }, [getNodeShape, layoutStyle])
+
+  // Efeito para forçar a centralização inicial
+  useEffect(() => {
+    if (!initialCenterApplied) {
+      const timer = setTimeout(() => {
+        centerDiagram()
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [initialCenterApplied, centerDiagram])
 
   return (
     <div className={`flex flex-col gap-4 ${fullscreen ? "h-screen" : ""}`} data-testid="mind-map-component">

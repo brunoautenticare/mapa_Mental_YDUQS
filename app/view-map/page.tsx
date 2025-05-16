@@ -19,6 +19,7 @@ export default function ViewMap() {
     colorPalette: "default",
     layoutStyle: "standard",
   })
+  const [key, setKey] = useState(0) // Chave para forçar re-renderização
 
   useEffect(() => {
     // Carregar dados do localStorage
@@ -44,6 +45,8 @@ export default function ViewMap() {
 
   const handleDiagramTypeChange = (type: string) => {
     setSettings((prev) => ({ ...prev, diagramType: type }))
+    // Forçar re-renderização do componente quando o tipo de diagrama muda
+    setKey((prevKey) => prevKey + 1)
     // Opcionalmente, salvar as novas configurações no localStorage
     localStorage.setItem("mindMapSettings", JSON.stringify({ ...settings, diagramType: type }))
   }
@@ -83,7 +86,7 @@ export default function ViewMap() {
       </Button>
 
       {/* Controles de tipo de diagrama e estilo */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-2">
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-wrap items-center justify-center gap-2">
         <DiagramSelectorFloating currentType={settings.diagramType} onTypeChange={handleDiagramTypeChange} />
         <ColorPaletteSelectorFloating
           currentPalette={settings.colorPalette}
@@ -95,7 +98,7 @@ export default function ViewMap() {
       </div>
 
       {/* Mapa mental em tela cheia */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0" key={key}>
         {settings.diagramType === "horizontal" ? (
           <HorizontalMindMap data={mapData} colorPalette={settings.colorPalette} fullscreen={true} />
         ) : settings.diagramType === "markdown" ? (
