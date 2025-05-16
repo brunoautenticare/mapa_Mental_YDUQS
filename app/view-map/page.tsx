@@ -39,6 +39,16 @@ export default function ViewMap() {
     }
   }, [])
 
+  // Efeito para forçar a centralização quando o componente é montado
+  useEffect(() => {
+    // Forçar re-renderização após um curto período para garantir que o diagrama seja centralizado
+    const timer = setTimeout(() => {
+      setKey((prevKey) => prevKey + 1)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [])
+
   const handleBackClick = () => {
     router.push("/")
   }
