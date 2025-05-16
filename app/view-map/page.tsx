@@ -38,6 +38,20 @@ export default function ViewMap() {
     }
   }, [])
 
+  // Efeito para forçar o reposicionamento quando a página é carregada
+  useEffect(() => {
+    if (mapData) {
+      // Forçar um reposicionamento após o carregamento completo da página
+      const timer = setTimeout(() => {
+        // Salvar as configurações atuais para forçar uma atualização
+        const currentSettings = { ...settings }
+        setSettings({ ...currentSettings })
+      }, 1000)
+
+      return () => clearTimeout(timer)
+    }
+  }, [mapData])
+
   const handleBackClick = () => {
     router.push("/")
   }
