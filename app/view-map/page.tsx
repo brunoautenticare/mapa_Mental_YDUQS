@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button"
 import { MindMap } from "@/components/mind-map"
 import { HorizontalMindMap } from "@/components/horizontal-mind-map"
 import { MarkmapViewer } from "@/components/markmap-viewer"
+import { DiagramSelectorFloating } from "@/components/diagram-selector-floating"
+import { ColorPaletteSelectorFloating } from "@/components/color-palette-selector-floating"
+import { LayoutStyleSelectorFloating } from "@/components/layout-style-selector-floating"
 
 export default function ViewMap() {
   const router = useRouter()
@@ -39,6 +42,22 @@ export default function ViewMap() {
     router.push("/")
   }
 
+  const handleDiagramTypeChange = (type: string) => {
+    setSettings((prev) => ({ ...prev, diagramType: type }))
+    // Opcionalmente, salvar as novas configurações no localStorage
+    localStorage.setItem("mindMapSettings", JSON.stringify({ ...settings, diagramType: type }))
+  }
+
+  const handleColorPaletteChange = (palette: string) => {
+    setSettings((prev) => ({ ...prev, colorPalette: palette }))
+    localStorage.setItem("mindMapSettings", JSON.stringify({ ...settings, colorPalette: palette }))
+  }
+
+  const handleLayoutStyleChange = (style: string) => {
+    setSettings((prev) => ({ ...prev, layoutStyle: style }))
+    localStorage.setItem("mindMapSettings", JSON.stringify({ ...settings, layoutStyle: style }))
+  }
+
   if (!mapData) {
     return (
       <div className="h-screen w-full flex items-center justify-center">
@@ -62,6 +81,18 @@ export default function ViewMap() {
         <ArrowLeft className="h-4 w-4" />
         <span className="sr-only">Voltar</span>
       </Button>
+
+      {/* Controles de tipo de diagrama e estilo */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-2">
+        <DiagramSelectorFloating currentType={settings.diagramType} onTypeChange={handleDiagramTypeChange} />
+        <ColorPaletteSelectorFloating
+          currentPalette={settings.colorPalette}
+          onPaletteChange={handleColorPaletteChange}
+        />
+        {settings.diagramType !== "horizontal" && settings.diagramType !== "markdown" && (
+          <LayoutStyleSelectorFloating currentStyle={settings.layoutStyle} onStyleChange={handleLayoutStyleChange} />
+        )}
+      </div>
 
       {/* Mapa mental em tela cheia */}
       <div className="absolute inset-0">
