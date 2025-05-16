@@ -40,6 +40,16 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   const dataIdRef = useRef("")
   const initialPositionAppliedRef = useRef(false)
 
+  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
+  if (diagramType === "horizontal") {
+    return <HorizontalMindMap data={data} colorPalette={colorPalette} />
+  }
+
+  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
+  if (diagramType === "markdown") {
+    return <MarkmapViewer data={data} height={500} />
+  }
+
   // Função para obter cores com base na paleta selecionada
   const getColorsByPalette = useCallback((palette: string) => {
     switch (palette) {
@@ -75,16 +85,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
         return "circle"
     }
   }, [])
-
-  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
-  if (diagramType === "horizontal") {
-    return <HorizontalMindMap data={data} colorPalette={colorPalette} />
-  }
-
-  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
-  if (diagramType === "markdown") {
-    return <MarkmapViewer data={data} height={500} />
-  }
 
   // Função para calcular as dimensões reais do diagrama
   const calculateDiagramSize = useCallback(() => {
@@ -176,21 +176,11 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
 
       console.log("Usando posição central padrão:", { x: centerX, y: centerY })
 
-      // Ajuste específico para os tipos de diagrama problemáticos
-      if (["mind-map", "logical-structure", "logical-structure-left", "fishbone"].includes(diagramType)) {
-        // Para esses tipos específicos, aplicar um zoom inicial menor e centralizar melhor
-        setPan({
-          x: centerX,
-          y: centerY,
-        })
-        setZoom(0.8) // Zoom inicial menor para ver mais do diagrama
-      } else {
-        setPan({
-          x: centerX,
-          y: centerY,
-        })
-        setZoom(1)
-      }
+      setPan({
+        x: centerX,
+        y: centerY,
+      })
+      setZoom(1)
       return
     }
 
@@ -199,20 +189,10 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     const diagramCenterY = (diagramDimensions.minY + diagramDimensions.maxY) / 2
 
     // Calcular o zoom ideal para exibir todo o diagrama
-    // Aumentar o padding para os tipos de diagrama problemáticos
-    const padding = ["mind-map", "logical-structure", "logical-structure-left", "fishbone"].includes(diagramType)
-      ? 120 // Padding maior para os tipos problemáticos
-      : 60 // Padding normal para outros tipos
-
+    const padding = 60 // Aumentar o padding para garantir mais espaço
     const widthRatio = (containerWidth - padding * 2) / diagramDimensions.width
     const heightRatio = (containerHeight - padding * 2) / diagramDimensions.height
-
-    // Limitar zoom a 1 (sem ampliar) para a maioria dos tipos, mas permitir zoom menor para os tipos problemáticos
-    const maxZoom = ["mind-map", "logical-structure", "logical-structure-left", "fishbone"].includes(diagramType)
-      ? 0.8 // Zoom máximo menor para os tipos problemáticos
-      : 1 // Zoom máximo normal para outros tipos
-
-    const idealZoom = Math.min(widthRatio, heightRatio, maxZoom)
+    const idealZoom = Math.min(widthRatio, heightRatio, 1) // Limitar zoom a 1 (sem ampliar)
 
     // Calcular a posição para centralizar
     const centerX = containerWidth / 2 - diagramCenterX * idealZoom
@@ -221,22 +201,11 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     console.log("Nova posição calculada:", { x: centerX, y: centerY, zoom: idealZoom * 0.9 })
 
     // Aplicar o posicionamento e zoom calculados
-    // Para os tipos problemáticos, aplicar um fator de ajuste adicional
-    if (["mind-map", "logical-structure", "logical-structure-left", "fishbone"].includes(diagramType)) {
-      setPan({
-        x: centerX,
-        y: centerY,
-      })
-      // Usar 80% do zoom ideal para garantir que tudo seja visível
-      setZoom(idealZoom * 0.8)
-    } else {
-      setPan({
-        x: centerX,
-        y: centerY,
-      })
-      // Usar 90% do zoom ideal para garantir que tudo seja visível
-      setZoom(idealZoom * 0.9)
-    }
+    setPan({
+      x: centerX,
+      y: centerY,
+    })
+    setZoom(idealZoom * 0.9) // Usar 90% do zoom ideal para garantir que tudo seja visível
 
     // Atualizar o estado de dimensões do diagrama
     setDiagramSize({
@@ -246,7 +215,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
 
     // Marcar que o posicionamento inicial foi aplicado
     initialPositionAppliedRef.current = true
-  }, [calculateDiagramSize, diagramType])
+  }, [calculateDiagramSize])
 
   // Função para renderizar o diagrama
   const renderDiagram = useCallback(() => {
@@ -276,35 +245,25 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     let isRadial = false
 
     // Configurar margens adequadas para cada tipo de diagrama
-    const margin = {
-      top: 50,
-      right: diagramType === "logical-structure-left" ? 200 : 150,
-      bottom: 50,
-      left: diagramType === "logical-structure" ? 200 : 150,
-    }
+    const margin = { top: 50, right: 150, bottom: 50, left: 150 }
 
     switch (diagramType) {
       case "logical-structure":
-        // Aumentar o tamanho para estrutura lógica
         layout = d3.tree().size([height - margin.top - margin.bottom, width - margin.right - margin.left])
         break
       case "logical-structure-left":
-        // Aumentar o tamanho para estrutura lógica à esquerda
         layout = d3.tree().size([height - margin.top - margin.bottom, width - margin.right - margin.left])
         break
       case "mind-map":
-        // Para mapa mental, usamos um layout radial com tamanho maior
+        // Para mapa mental, usamos um layout radial
         isRadial = true
         layout = d3
           .tree()
-          .size([2 * Math.PI, Math.min(width, height) / 2.5]) // Aumentado de /3 para /2.5
-          .separation((a, b) => (a.parent === b.parent ? 1.2 : 2.4) / a.depth) // Aumentado para maior separação
+          .size([2 * Math.PI, Math.min(width, height) / 3]) // Layout circular
+          .separation((a, b) => (a.parent === b.parent ? 1 : 2) / a.depth)
         break
       case "fishbone":
-        // Aumentar o tamanho para espinha de peixe
         layout = d3.tree().size([height - margin.top - margin.bottom, width - margin.right - margin.left])
-        // Aumentar a separação entre nós para o diagrama espinha de peixe
-        layout.separation((a: any, b: any) => (a.parent === b.parent ? 1.5 : 2.5))
         break
       default:
         layout = d3.tree().size([height - margin.top - margin.bottom, width - margin.right - margin.left])
@@ -667,14 +626,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   useEffect(() => {
     setNodeShape(getNodeShape(layoutStyle))
   }, [getNodeShape, layoutStyle])
-
-  // Efeito para ajustar o zoom inicial com base no tipo de diagrama
-  useEffect(() => {
-    // Definir zoom inicial menor para os tipos de diagrama problemáticos
-    if (["mind-map", "logical-structure", "logical-structure-left", "fishbone"].includes(diagramType)) {
-      setZoom(0.8)
-    }
-  }, [diagramType])
 
   return (
     <div className={`flex flex-col gap-4 ${fullscreen ? "h-screen" : ""}`} data-testid="mind-map-component">
