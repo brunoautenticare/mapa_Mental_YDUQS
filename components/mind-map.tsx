@@ -42,6 +42,18 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   const dataIdRef = useRef("")
   const initialPositionAppliedRef = useRef(false)
 
+  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
+  let content: React.ReactNode = null
+
+  if (isHorizontal) {
+    content = <HorizontalMindMap data={data} colorPalette={colorPalette} />
+  }
+
+  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
+  if (isMarkdown) {
+    content = <MarkmapViewer data={data} height={500} />
+  }
+
   // Função para obter cores com base na paleta selecionada
   const getColorsByPalette = useCallback((palette: string) => {
     switch (palette) {
@@ -77,16 +89,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
         return "circle"
     }
   }, [])
-
-  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
-  if (isHorizontal) {
-    return <HorizontalMindMap data={data} colorPalette={colorPalette} />
-  }
-
-  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
-  if (isMarkdown) {
-    return <MarkmapViewer data={data} height={500} />
-  }
 
   // Função para calcular as dimensões reais do diagrama
   const calculateDiagramSize = useCallback(() => {
@@ -165,70 +167,39 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     const containerWidth = containerRef.current.clientWidth
     const containerHeight = containerRef.current.clientHeight
 
-    // Abordagem 1: Usar getBBox para obter as dimensões reais do diagrama
-    try {
-      const diagramContainer = d3.select(svgRef.current).select(".diagram-container").node() as SVGGElement
-      if (diagramContainer) {
-        // Obter o bounding box de todo o diagrama
-        const bbox = diagramContainer.getBBox()
+    // Definir valores específicos para cada tipo de diagrama
+    let defaultZoom = 0.7
+    let centerX = containerWidth / 2
+    let centerY = containerHeight / 2
 
-        console.log("Dimensões do diagrama via getBBox:", bbox)
-
-        // Calcular o zoom ideal para exibir todo o diagrama
-        const padding = 100 // Aumentar o padding para garantir mais espaço
-        const widthRatio = (containerWidth - padding * 2) / bbox.width
-        const heightRatio = (containerHeight - padding * 2) / bbox.height
-        const idealZoom = Math.min(widthRatio, heightRatio, 0.8) // Limitar zoom a 0.8 para garantir visibilidade
-
-        // Calcular a posição para centralizar
-        // Ajustar com base no tipo de diagrama
-        let centerX, centerY
-
-        if (diagramType === "mind-map") {
-          // Para mapa mental (radial), centralizar no meio do contêiner
-          centerX = containerWidth / 2
-          centerY = containerHeight / 2
-        } else if (diagramType === "logical-structure-left") {
-          // Para estrutura lógica à esquerda
-          centerX = containerWidth / 2 + (bbox.width / 2) * idealZoom
-          centerY = containerHeight / 2
-        } else {
-          // Para outros tipos
-          centerX = containerWidth / 2 - (bbox.width / 2) * idealZoom
-          centerY = containerHeight / 2
-        }
-
-        console.log("Nova posição calculada:", { x: centerX, y: centerY, zoom: idealZoom })
-
-        // Aplicar o posicionamento e zoom calculados
-        setPan({
-          x: centerX,
-          y: centerY,
-        })
-        setZoom(idealZoom)
-
-        // Marcar que o posicionamento inicial foi aplicado
-        initialPositionAppliedRef.current = true
-        return
-      }
-    } catch (error) {
-      console.error("Erro ao centralizar via getBBox:", error)
+    // Ajustar com base no tipo específico de diagrama
+    switch (diagramType) {
+      case "mind-map":
+        // Mapa mental (radial)
+        defaultZoom = 0.6
+        // Centralizar no meio
+        break
+      case "logical-structure":
+        // Estrutura lógica
+        defaultZoom = 0.5
+        centerX = containerWidth / 2 - 100 // Ajuste para a direita
+        break
+      case "logical-structure-left":
+        // Estrutura lógica (Esq)
+        defaultZoom = 0.5
+        centerX = containerWidth / 2 + 100 // Ajuste para a esquerda
+        break
+      case "fishbone":
+        // Espinha de peixe
+        defaultZoom = 0.4
+        centerY = containerHeight / 2 - 50 // Ajuste para cima
+        break
+      default:
+        // Outros tipos
+        defaultZoom = 0.7
     }
 
-    // Abordagem 2 (fallback): Usar valores fixos baseados no tipo de diagrama
-    console.log("Usando abordagem de fallback para centralizar")
-
-    let defaultZoom = 0.7 // Zoom padrão reduzido para garantir visibilidade
-    const centerX = containerWidth / 2
-    const centerY = containerHeight / 2
-
-    // Ajustar com base no tipo de diagrama
-    if (diagramType === "mind-map") {
-      defaultZoom = 0.6 // Zoom menor para mapa mental radial
-    } else if (diagramType === "fishbone") {
-      defaultZoom = 0.5 // Zoom ainda menor para espinha de peixe
-    }
-
+    // Aplicar posicionamento e zoom
     setPan({ x: centerX, y: centerY })
     setZoom(defaultZoom)
 
@@ -488,11 +459,12 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
       setPan({ x: 0, y: 0 })
       setZoom(1)
 
-      // Usar setTimeout com um tempo maior para garantir que o DOM foi atualizado
-      // e que todos os elementos do diagrama foram renderizados
-      setTimeout(() => {
-        centerDiagram()
-      }, 500) // Aumentar o timeout para garantir que o diagrama foi completamente renderizado
+      // Aplicar centralização imediatamente para os 4 tipos específicos
+      if (["mind-map", "logical-structure", "logical-structure-left", "fishbone"].includes(diagramType)) {
+        setTimeout(() => {
+          centerDiagram()
+        }, 100)
+      }
     }
   }, [centerDiagram, colors, data, diagramType, layoutStyle, renderDiagram])
 
@@ -507,6 +479,19 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     }, 500)
 
     return () => clearTimeout(timer)
+  }, [diagramType, centerDiagram])
+
+  // Efeito específico para reagir a mudanças nos 4 tipos específicos
+  useEffect(() => {
+    if (["mind-map", "logical-structure", "logical-structure-left", "fishbone"].includes(diagramType)) {
+      // Marcar que precisamos reposicionar
+      initialPositionAppliedRef.current = false
+
+      // Aplicar centralização com um pequeno atraso
+      setTimeout(() => {
+        centerDiagram()
+      }, 200)
+    }
   }, [diagramType, centerDiagram])
 
   // Efeito para aplicar pan e zoom
@@ -820,6 +805,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
           </div>
         </div>
       )}
+      {content}
     </div>
   )
 }
