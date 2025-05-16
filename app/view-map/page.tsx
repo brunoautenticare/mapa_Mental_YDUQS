@@ -7,9 +7,6 @@ import { Button } from "@/components/ui/button"
 import { MindMap } from "@/components/mind-map"
 import { HorizontalMindMap } from "@/components/horizontal-mind-map"
 import { MarkmapViewer } from "@/components/markmap-viewer"
-import { DiagramSelectorFloating } from "@/components/diagram-selector-floating"
-import { ColorPaletteSelectorFloating } from "@/components/color-palette-selector-floating"
-import { LayoutStyleSelectorFloating } from "@/components/layout-style-selector-floating"
 
 export default function ViewMap() {
   const router = useRouter()
@@ -19,7 +16,6 @@ export default function ViewMap() {
     colorPalette: "default",
     layoutStyle: "standard",
   })
-  const [key, setKey] = useState(0) // Chave para forçar re-renderização
 
   useEffect(() => {
     // Carregar dados do localStorage
@@ -39,36 +35,8 @@ export default function ViewMap() {
     }
   }, [])
 
-  // Efeito para forçar a centralização quando o componente é montado
-  useEffect(() => {
-    // Forçar re-renderização após um curto período para garantir que o diagrama seja centralizado
-    const timer = setTimeout(() => {
-      setKey((prevKey) => prevKey + 1)
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [])
-
   const handleBackClick = () => {
     router.push("/")
-  }
-
-  const handleDiagramTypeChange = (type: string) => {
-    setSettings((prev) => ({ ...prev, diagramType: type }))
-    // Forçar re-renderização do componente quando o tipo de diagrama muda
-    setKey((prevKey) => prevKey + 1)
-    // Opcionalmente, salvar as novas configurações no localStorage
-    localStorage.setItem("mindMapSettings", JSON.stringify({ ...settings, diagramType: type }))
-  }
-
-  const handleColorPaletteChange = (palette: string) => {
-    setSettings((prev) => ({ ...prev, colorPalette: palette }))
-    localStorage.setItem("mindMapSettings", JSON.stringify({ ...settings, colorPalette: palette }))
-  }
-
-  const handleLayoutStyleChange = (style: string) => {
-    setSettings((prev) => ({ ...prev, layoutStyle: style }))
-    localStorage.setItem("mindMapSettings", JSON.stringify({ ...settings, layoutStyle: style }))
   }
 
   if (!mapData) {
@@ -95,20 +63,8 @@ export default function ViewMap() {
         <span className="sr-only">Voltar</span>
       </Button>
 
-      {/* Controles de tipo de diagrama e estilo */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-wrap items-center justify-center gap-2">
-        <DiagramSelectorFloating currentType={settings.diagramType} onTypeChange={handleDiagramTypeChange} />
-        <ColorPaletteSelectorFloating
-          currentPalette={settings.colorPalette}
-          onPaletteChange={handleColorPaletteChange}
-        />
-        {settings.diagramType !== "horizontal" && settings.diagramType !== "markdown" && (
-          <LayoutStyleSelectorFloating currentStyle={settings.layoutStyle} onStyleChange={handleLayoutStyleChange} />
-        )}
-      </div>
-
       {/* Mapa mental em tela cheia */}
-      <div className="absolute inset-0" key={key}>
+      <div className="absolute inset-0">
         {settings.diagramType === "horizontal" ? (
           <HorizontalMindMap data={mapData} colorPalette={settings.colorPalette} fullscreen={true} />
         ) : settings.diagramType === "markdown" ? (

@@ -35,13 +35,20 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   const [diagramSize, setDiagramSize] = useState({ width: 0, height: 0 })
   const [colors, setColors] = useState<string[]>([])
   const [nodeShape, setNodeShape] = useState<string>("circle")
-  const [initialCenterApplied, setInitialCenterApplied] = useState(false)
-  const [renderHorizontal, setRenderHorizontal] = useState(false)
-  const [renderMarkdown, setRenderMarkdown] = useState(false)
 
   // Usar refs para evitar re-renderizações desnecessárias
   const dataIdRef = useRef("")
   const initialPositionAppliedRef = useRef(false)
+
+  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
+  if (diagramType === "horizontal") {
+    return <HorizontalMindMap data={data} colorPalette={colorPalette} />
+  }
+
+  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
+  if (diagramType === "markdown") {
+    return <MarkmapViewer data={data} height={500} />
+  }
 
   // Função para obter cores com base na paleta selecionada
   const getColorsByPalette = useCallback((palette: string) => {
@@ -78,172 +85,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
         return "circle"
     }
   }, [])
-
-  useEffect(() => {
-    setRenderHorizontal(diagramType === "horizontal")
-    setRenderMarkdown(diagramType === "markdown")
-  }, [diagramType])
-
-  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
-  let content: React.ReactNode = null
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0) {
-      // Apenas botão esquerdo do mouse
-      setIsDragging(true)
-      setDragStart({ x: e.clientX, y: e.clientY })
-
-      // Mudar cursor para indicar arrasto
-      if (containerRef.current) {
-        containerRef.current.style.cursor = "grabbing"
-      }
-    }
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) {
-      const dx = e.clientX - dragStart.x
-      const dy = e.clientY - dragStart.y
-
-      setPan((prev) => ({
-        x: prev.x + dx,
-        y: prev.y + dy,
-      }))
-
-      setDragStart({ x: e.clientX, y: e.clientY })
-    }
-  }
-
-  const handleMouseUp = () => {
-    setIsDragging(false)
-
-    // Restaurar cursor
-    if (containerRef.current) {
-      containerRef.current.style.cursor = "grab"
-    }
-  }
-
-  const handleMouseLeave = () => {
-    if (isDragging) {
-      setIsDragging(false)
-
-      // Restaurar cursor
-      if (containerRef.current) {
-        containerRef.current.style.cursor = "grab"
-      }
-    }
-  }
-
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault()
-
-    // Ajustar o zoom com a roda do mouse
-    if (e.deltaY < 0) {
-      // Scroll para cima - zoom in
-      setZoom((prev) => Math.min(prev + 0.05, 2))
-    } else {
-      // Scroll para baixo - zoom out
-      setZoom((prev) => Math.max(prev - 0.05, 0.5))
-    }
-  }
-
-  if (renderHorizontal) {
-    content = <HorizontalMindMap data={data} colorPalette={colorPalette} fullscreen={fullscreen} />
-  } else if (renderMarkdown) {
-    content = <MarkmapViewer data={data} fullscreen={fullscreen} />
-  } else {
-    content = (
-      <div
-        ref={containerRef}
-        className={`${fullscreen ? "w-full h-full" : "w-full h-[500px]"} border rounded-lg relative bg-white`}
-        style={{
-          backgroundImage: "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
-          backgroundSize: "20px 20px",
-          cursor: isDragging ? "grabbing" : "grab",
-          overflow: "hidden", // Contém o SVG dentro do contêiner
-        }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-        onWheel={handleWheel}
-        data-testid="diagram-container"
-      >
-        <svg
-          ref={svgRef}
-          width="100%"
-          height="100%"
-          style={{
-            display: "block",
-            maxWidth: "100%",
-            maxHeight: "100%",
-          }}
-          data-testid="diagram-svg"
-        />
-
-        {/* Controles flutuantes quando em modo tela cheia */}
-        {fullscreen && (
-          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleZoomOut}
-              title="Diminuir zoom"
-              data-testid="zoom-out-button"
-            >
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-
-            <div className="w-[200px]">
-              <Slider
-                defaultValue={[1]}
-                value={[zoom]}
-                min={0.5}
-                max={2}
-                step={0.1}
-                onValueChange={handleZoomChange}
-                data-testid="zoom-slider"
-              />
-            </div>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleZoomIn}
-              title="Aumentar zoom"
-              data-testid="zoom-in-button"
-            >
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleReset}
-              title="Resetar visualização"
-              data-testid="reset-button"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {/* Botões de exportação flutuantes quando em modo tela cheia */}
-        {fullscreen && (
-          <div className="absolute top-4 right-4 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
-            <Button variant="outline" onClick={exportAsPNG} data-testid="export-button" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar PNG
-            </Button>
-            <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button" size="sm">
-              <FileText className="h-4 w-4 mr-2" />
-              Exportar Markdown
-            </Button>
-          </div>
-        )}
-      </div>
-    )
-  }
 
   // Função para calcular as dimensões reais do diagrama
   const calculateDiagramSize = useCallback(() => {
@@ -348,22 +189,23 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     const diagramCenterY = (diagramDimensions.minY + diagramDimensions.maxY) / 2
 
     // Calcular o zoom ideal para exibir todo o diagrama
-    const padding = 80 // Aumentar o padding para garantir mais espaço
+    const padding = 60 // Aumentar o padding para garantir mais espaço
     const widthRatio = (containerWidth - padding * 2) / diagramDimensions.width
     const heightRatio = (containerHeight - padding * 2) / diagramDimensions.height
     const idealZoom = Math.min(widthRatio, heightRatio, 1) // Limitar zoom a 1 (sem ampliar)
 
     // Calcular a posição para centralizar
-    // Ajuste para garantir centralização real
-    const centerX = containerWidth / 2
-    const centerY = containerHeight / 2
+    const centerX = containerWidth / 2 - diagramCenterX * idealZoom
+    const centerY = containerHeight / 2 - diagramCenterY * idealZoom
+
+    console.log("Nova posição calculada:", { x: centerX, y: centerY, zoom: idealZoom * 0.9 })
 
     // Aplicar o posicionamento e zoom calculados
     setPan({
       x: centerX,
       y: centerY,
     })
-    setZoom(idealZoom * 0.8) // Reduzir um pouco mais o zoom para garantir que tudo seja visível
+    setZoom(idealZoom * 0.9) // Usar 90% do zoom ideal para garantir que tudo seja visível
 
     // Atualizar o estado de dimensões do diagrama
     setDiagramSize({
@@ -373,7 +215,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
 
     // Marcar que o posicionamento inicial foi aplicado
     initialPositionAppliedRef.current = true
-    setInitialCenterApplied(true)
   }, [calculateDiagramSize])
 
   // Função para renderizar o diagrama
@@ -387,15 +228,14 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     if (isNewData) {
       dataIdRef.current = currentDataId
       initialPositionAppliedRef.current = false
-      setInitialCenterApplied(false)
     }
 
     // Limpar SVG existente
     d3.select(svgRef.current).selectAll("*").remove()
 
     // Dimensões base do SVG
-    const width = 1000
-    const height = 800
+    const width = 800
+    const height = 500
 
     // Criar hierarquia
     const root = d3.hierarchy(data)
@@ -405,7 +245,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     let isRadial = false
 
     // Configurar margens adequadas para cada tipo de diagrama
-    const margin = { top: 100, right: 200, bottom: 100, left: 200 }
+    const margin = { top: 50, right: 150, bottom: 50, left: 150 }
 
     switch (diagramType) {
       case "logical-structure":
@@ -445,8 +285,16 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     diagramRef.current = svg.node() as SVGGElement
 
     // Ajustar a transformação com base no tipo de diagrama
-    // Centralizar todos os tipos de diagrama no meio do SVG
-    svg.attr("transform", `translate(${width / 2},${height / 2})`)
+    if (isRadial) {
+      // Para layouts radiais (mapa mental), centralizamos no meio
+      svg.attr("transform", `translate(${width / 2},${height / 2})`)
+    } else if (diagramType === "logical-structure-left") {
+      // Para estrutura lógica à esquerda, invertemos a direção
+      svg.attr("transform", `translate(${width - margin.right},${margin.top})`)
+    } else {
+      // Para outros tipos
+      svg.attr("transform", `translate(${margin.left},${margin.top})`)
+    }
 
     // Função para gerar links com base no tipo de diagrama
     const generateLink = (d: any) => {
@@ -474,9 +322,9 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
           const source = { x: d.source.x, y: d.source.y }
           const target = { x: d.target.x, y: d.target.y }
           return `M${source.y},${source.x} 
-              H${source.y + (target.y - source.y) / 2} 
-              V${target.x} 
-              H${target.y}`
+                  H${source.y + (target.y - source.y) / 2} 
+                  V${target.x} 
+                  H${target.y}`
         default:
           return d3
             .linkHorizontal()
@@ -611,14 +459,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     URL.revokeObjectURL(url)
   }
 
-  useEffect(() => {
-    setColors(getColorsByPalette(colorPalette))
-  }, [colorPalette, getColorsByPalette])
-
-  useEffect(() => {
-    setNodeShape(getNodeShape(layoutStyle))
-  }, [getNodeShape, layoutStyle])
-
   // Efeito para renderizar o diagrama quando os dados ou configurações mudam
   useEffect(() => {
     const isNewData = renderDiagram()
@@ -633,7 +473,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
       // e que todos os elementos do diagrama foram renderizados
       setTimeout(() => {
         centerDiagram()
-      }, 300) // Aumentar o timeout para garantir que o diagrama foi completamente renderizado
+      }, 200) // Aumentar o timeout para garantir que o diagrama foi completamente renderizado
     }
   }, [centerDiagram, colors, data, diagramType, layoutStyle, renderDiagram])
 
@@ -643,44 +483,9 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
 
     const container = d3.select(svgRef.current).select(".diagram-container")
     if (!container.empty()) {
-      // Aplicar transformação com base no tipo de diagrama
       container.attr("transform", `translate(${pan.x}, ${pan.y}) scale(${zoom})`)
     }
-  }, [pan, zoom, diagramType])
-
-  // Efeito para centralizar o diagrama quando o tipo muda
-  useEffect(() => {
-    // Resetar o estado de centralização quando o tipo de diagrama muda
-    setInitialCenterApplied(false)
-    initialPositionAppliedRef.current = false
-
-    // Dar tempo para o diagrama renderizar antes de centralizar
-    setTimeout(() => {
-      centerDiagram()
-    }, 300)
-  }, [diagramType, centerDiagram])
-
-  // Efeito para forçar a centralização inicial
-  useEffect(() => {
-    if (!initialCenterApplied) {
-      const timer = setTimeout(() => {
-        centerDiagram()
-      }, 800) // Aumentar o timeout para garantir que o diagrama foi completamente renderizado
-      return () => clearTimeout(timer)
-    }
-  }, [initialCenterApplied, centerDiagram])
-
-  // Efeito para recentralizar o diagrama quando o tamanho da janela mudar
-  useEffect(() => {
-    const handleResize = () => {
-      centerDiagram()
-    }
-
-    window.addEventListener("resize", handleResize)
-    return () => {
-      window.removeEventListener("resize", handleResize)
-    }
-  }, [centerDiagram])
+  }, [pan, zoom])
 
   // Funções de controle de zoom e pan
   const handleZoomIn = () => {
@@ -699,6 +504,66 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     centerDiagram()
   }
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 0) {
+      // Apenas botão esquerdo do mouse
+      setIsDragging(true)
+      setDragStart({ x: e.clientX, y: e.clientY })
+
+      // Mudar cursor para indicar arrasto
+      if (containerRef.current) {
+        containerRef.current.style.cursor = "grabbing"
+      }
+    }
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      const dx = e.clientX - dragStart.x
+      const dy = e.clientY - dragStart.y
+
+      setPan((prev) => ({
+        x: prev.x + dx,
+        y: prev.y + dy,
+      }))
+
+      setDragStart({ x: e.clientX, y: e.clientY })
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+
+    // Restaurar cursor
+    if (containerRef.current) {
+      containerRef.current.style.cursor = "grab"
+    }
+  }
+
+  const handleMouseLeave = () => {
+    if (isDragging) {
+      setIsDragging(false)
+
+      // Restaurar cursor
+      if (containerRef.current) {
+        containerRef.current.style.cursor = "grab"
+      }
+    }
+  }
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault()
+
+    // Ajustar o zoom com a roda do mouse
+    if (e.deltaY < 0) {
+      // Scroll para cima - zoom in
+      setZoom((prev) => Math.min(prev + 0.05, 2))
+    } else {
+      // Scroll para baixo - zoom out
+      setZoom((prev) => Math.max(prev - 0.05, 0.5))
+    }
+  }
+
   // Função para exportar o diagrama como PNG
   const exportAsPNG = () => {
     if (!svgRef.current) return
@@ -709,8 +574,8 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
 
     const img = new Image()
     img.onload = () => {
-      canvas.width = 1000
-      canvas.height = 800
+      canvas.width = 800
+      canvas.height = 500
 
       // Desenhar o fundo pontilhado
       if (ctx) {
@@ -720,7 +585,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
         // Desenhar os pontos
         ctx.fillStyle = "#e5e7eb"
         for (let x = 0; x < canvas.width; x += 20) {
-          for (let y = 0; y < canvas.width; y += 20) {
+          for (let y = 0; y < canvas.height; y += 20) {
             ctx.beginPath()
             ctx.arc(x, y, 1, 0, 2 * Math.PI)
             ctx.fill()
@@ -742,12 +607,120 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData)
   }
 
+  // Efeito para recentralizar o diagrama quando o tamanho da janela mudar
+  useEffect(() => {
+    const handleResize = () => {
+      centerDiagram()
+    }
+
+    window.addEventListener("resize", handleResize)
+    return () => {
+      window.removeEventListener("resize", handleResize)
+    }
+  }, [centerDiagram])
+
+  useEffect(() => {
+    setColors(getColorsByPalette(colorPalette))
+  }, [colorPalette, getColorsByPalette])
+
+  useEffect(() => {
+    setNodeShape(getNodeShape(layoutStyle))
+  }, [getNodeShape, layoutStyle])
+
   return (
     <div className={`flex flex-col gap-4 ${fullscreen ? "h-screen" : ""}`} data-testid="mind-map-component">
-      {content}
+      <div
+        ref={containerRef}
+        className={`${fullscreen ? "w-full h-full" : "w-full h-[500px]"} border rounded-lg relative bg-white`}
+        style={{
+          backgroundImage: "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
+          backgroundSize: "20px 20px",
+          cursor: isDragging ? "grabbing" : "grab",
+          overflow: "hidden", // Contém o SVG dentro do contêiner
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onWheel={handleWheel}
+        data-testid="diagram-container"
+      >
+        <svg
+          ref={svgRef}
+          width="100%"
+          height="100%"
+          style={{
+            display: "block",
+            maxWidth: "100%",
+            maxHeight: "100%",
+          }}
+          data-testid="diagram-svg"
+        />
+
+        {/* Controles flutuantes quando em modo tela cheia */}
+        {fullscreen && (
+          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomOut}
+              title="Diminuir zoom"
+              data-testid="zoom-out-button"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+
+            <div className="w-[200px]">
+              <Slider
+                defaultValue={[1]}
+                value={[zoom]}
+                min={0.5}
+                max={2}
+                step={0.1}
+                onValueChange={handleZoomChange}
+                data-testid="zoom-slider"
+              />
+            </div>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomIn}
+              title="Aumentar zoom"
+              data-testid="zoom-in-button"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleReset}
+              title="Resetar visualização"
+              data-testid="reset-button"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* Botões de exportação flutuantes quando em modo tela cheia */}
+        {fullscreen && (
+          <div className="absolute top-4 right-4 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
+            <Button variant="outline" onClick={exportAsPNG} data-testid="export-button" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PNG
+            </Button>
+            <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button" size="sm">
+              <FileText className="h-4 w-4 mr-2" />
+              Exportar Markdown
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Controles fixos quando não estiver em modo tela cheia */}
-      {!fullscreen && !renderHorizontal && !renderMarkdown && (
+      {!fullscreen && (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button
