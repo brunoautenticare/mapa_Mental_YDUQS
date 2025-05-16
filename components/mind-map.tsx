@@ -85,13 +85,164 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   }, [diagramType])
 
   // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
-  if (renderHorizontal) {
-    return <HorizontalMindMap data={data} colorPalette={colorPalette} fullscreen={fullscreen} />
+  let content: React.ReactNode = null
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 0) {
+      // Apenas botão esquerdo do mouse
+      setIsDragging(true)
+      setDragStart({ x: e.clientX, y: e.clientY })
+
+      // Mudar cursor para indicar arrasto
+      if (containerRef.current) {
+        containerRef.current.style.cursor = "grabbing"
+      }
+    }
   }
 
-  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
-  if (renderMarkdown) {
-    return <MarkmapViewer data={data} fullscreen={fullscreen} />
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      const dx = e.clientX - dragStart.x
+      const dy = e.clientY - dragStart.y
+
+      setPan((prev) => ({
+        x: prev.x + dx,
+        y: prev.y + dy,
+      }))
+
+      setDragStart({ x: e.clientX, y: e.clientY })
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+
+    // Restaurar cursor
+    if (containerRef.current) {
+      containerRef.current.style.cursor = "grab"
+    }
+  }
+
+  const handleMouseLeave = () => {
+    if (isDragging) {
+      setIsDragging(false)
+
+      // Restaurar cursor
+      if (containerRef.current) {
+        containerRef.current.style.cursor = "grab"
+      }
+    }
+  }
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault()
+
+    // Ajustar o zoom com a roda do mouse
+    if (e.deltaY < 0) {
+      // Scroll para cima - zoom in
+      setZoom((prev) => Math.min(prev + 0.05, 2))
+    } else {
+      // Scroll para baixo - zoom out
+      setZoom((prev) => Math.max(prev - 0.05, 0.5))
+    }
+  }
+
+  if (renderHorizontal) {
+    content = <HorizontalMindMap data={data} colorPalette={colorPalette} fullscreen={fullscreen} />
+  } else if (renderMarkdown) {
+    content = <MarkmapViewer data={data} fullscreen={fullscreen} />
+  } else {
+    content = (
+      <div
+        ref={containerRef}
+        className={`${fullscreen ? "w-full h-full" : "w-full h-[500px]"} border rounded-lg relative bg-white`}
+        style={{
+          backgroundImage: "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
+          backgroundSize: "20px 20px",
+          cursor: isDragging ? "grabbing" : "grab",
+          overflow: "hidden", // Contém o SVG dentro do contêiner
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onWheel={handleWheel}
+        data-testid="diagram-container"
+      >
+        <svg
+          ref={svgRef}
+          width="100%"
+          height="100%"
+          style={{
+            display: "block",
+            maxWidth: "100%",
+            maxHeight: "100%",
+          }}
+          data-testid="diagram-svg"
+        />
+
+        {/* Controles flutuantes quando em modo tela cheia */}
+        {fullscreen && (
+          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomOut}
+              title="Diminuir zoom"
+              data-testid="zoom-out-button"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+
+            <div className="w-[200px]">
+              <Slider
+                defaultValue={[1]}
+                value={[zoom]}
+                min={0.5}
+                max={2}
+                step={0.1}
+                onValueChange={handleZoomChange}
+                data-testid="zoom-slider"
+              />
+            </div>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomIn}
+              title="Aumentar zoom"
+              data-testid="zoom-in-button"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleReset}
+              title="Resetar visualização"
+              data-testid="reset-button"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* Botões de exportação flutuantes quando em modo tela cheia */}
+        {fullscreen && (
+          <div className="absolute top-4 right-4 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
+            <Button variant="outline" onClick={exportAsPNG} data-testid="export-button" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PNG
+            </Button>
+            <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button" size="sm">
+              <FileText className="h-4 w-4 mr-2" />
+              Exportar Markdown
+            </Button>
+          </div>
+        )}
+      </div>
+    )
   }
 
   // Função para calcular as dimensões reais do diagrama
@@ -294,16 +445,8 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     diagramRef.current = svg.node() as SVGGElement
 
     // Ajustar a transformação com base no tipo de diagrama
-    if (isRadial) {
-      // Para layouts radiais (mapa mental), centralizamos no meio
-      svg.attr("transform", `translate(${width / 2},${height / 2})`)
-    } else if (diagramType === "logical-structure-left") {
-      // Para estrutura lógica à esquerda, invertemos a direção
-      svg.attr("transform", `translate(${width / 2},${height / 2})`)
-    } else {
-      // Para outros tipos
-      svg.attr("transform", `translate(${width / 2},${height / 2})`)
-    }
+    // Centralizar todos os tipos de diagrama no meio do SVG
+    svg.attr("transform", `translate(${width / 2},${height / 2})`)
 
     // Função para gerar links com base no tipo de diagrama
     const generateLink = (d: any) => {
@@ -501,16 +644,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     const container = d3.select(svgRef.current).select(".diagram-container")
     if (!container.empty()) {
       // Aplicar transformação com base no tipo de diagrama
-      if (diagramType === "mind-map") {
-        // Para mapa mental (radial)
-        container.attr("transform", `translate(${pan.x}, ${pan.y}) scale(${zoom})`)
-      } else if (diagramType === "logical-structure-left") {
-        // Para estrutura lógica à esquerda
-        container.attr("transform", `translate(${pan.x}, ${pan.y}) scale(${zoom})`)
-      } else {
-        // Para outros tipos
-        container.attr("transform", `translate(${pan.x}, ${pan.y}) scale(${zoom})`)
-      }
+      container.attr("transform", `translate(${pan.x}, ${pan.y}) scale(${zoom})`)
     }
   }, [pan, zoom, diagramType])
 
@@ -565,66 +699,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     centerDiagram()
   }
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0) {
-      // Apenas botão esquerdo do mouse
-      setIsDragging(true)
-      setDragStart({ x: e.clientX, y: e.clientY })
-
-      // Mudar cursor para indicar arrasto
-      if (containerRef.current) {
-        containerRef.current.style.cursor = "grabbing"
-      }
-    }
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) {
-      const dx = e.clientX - dragStart.x
-      const dy = e.clientY - dragStart.y
-
-      setPan((prev) => ({
-        x: prev.x + dx,
-        y: prev.y + dy,
-      }))
-
-      setDragStart({ x: e.clientX, y: e.clientY })
-    }
-  }
-
-  const handleMouseUp = () => {
-    setIsDragging(false)
-
-    // Restaurar cursor
-    if (containerRef.current) {
-      containerRef.current.style.cursor = "grab"
-    }
-  }
-
-  const handleMouseLeave = () => {
-    if (isDragging) {
-      setIsDragging(false)
-
-      // Restaurar cursor
-      if (containerRef.current) {
-        containerRef.current.style.cursor = "grab"
-      }
-    }
-  }
-
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault()
-
-    // Ajustar o zoom com a roda do mouse
-    if (e.deltaY < 0) {
-      // Scroll para cima - zoom in
-      setZoom((prev) => Math.min(prev + 0.05, 2))
-    } else {
-      // Scroll para baixo - zoom out
-      setZoom((prev) => Math.max(prev - 0.05, 0.5))
-    }
-  }
-
   // Função para exportar o diagrama como PNG
   const exportAsPNG = () => {
     if (!svgRef.current) return
@@ -670,98 +744,10 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
 
   return (
     <div className={`flex flex-col gap-4 ${fullscreen ? "h-screen" : ""}`} data-testid="mind-map-component">
-      <div
-        ref={containerRef}
-        className={`${fullscreen ? "w-full h-full" : "w-full h-[500px]"} border rounded-lg relative bg-white`}
-        style={{
-          backgroundImage: "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
-          backgroundSize: "20px 20px",
-          cursor: isDragging ? "grabbing" : "grab",
-          overflow: "hidden", // Contém o SVG dentro do contêiner
-        }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-        onWheel={handleWheel}
-        data-testid="diagram-container"
-      >
-        <svg
-          ref={svgRef}
-          width="100%"
-          height="100%"
-          style={{
-            display: "block",
-            maxWidth: "100%",
-            maxHeight: "100%",
-          }}
-          data-testid="diagram-svg"
-        />
-
-        {/* Controles flutuantes quando em modo tela cheia */}
-        {fullscreen && (
-          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleZoomOut}
-              title="Diminuir zoom"
-              data-testid="zoom-out-button"
-            >
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-
-            <div className="w-[200px]">
-              <Slider
-                defaultValue={[1]}
-                value={[zoom]}
-                min={0.5}
-                max={2}
-                step={0.1}
-                onValueChange={handleZoomChange}
-                data-testid="zoom-slider"
-              />
-            </div>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleZoomIn}
-              title="Aumentar zoom"
-              data-testid="zoom-in-button"
-            >
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleReset}
-              title="Resetar visualização"
-              data-testid="reset-button"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {/* Botões de exportação flutuantes quando em modo tela cheia */}
-        {fullscreen && (
-          <div className="absolute top-4 right-4 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
-            <Button variant="outline" onClick={exportAsPNG} data-testid="export-button" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar PNG
-            </Button>
-            <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button" size="sm">
-              <FileText className="h-4 w-4 mr-2" />
-              Exportar Markdown
-            </Button>
-          </div>
-        )}
-      </div>
+      {content}
 
       {/* Controles fixos quando não estiver em modo tela cheia */}
-      {!fullscreen && (
+      {!fullscreen && !renderHorizontal && !renderMarkdown && (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button
