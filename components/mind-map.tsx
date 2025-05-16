@@ -40,16 +40,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   const dataIdRef = useRef("")
   const initialPositionAppliedRef = useRef(false)
 
-  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
-  if (diagramType === "horizontal") {
-    return <HorizontalMindMap data={data} colorPalette={colorPalette} />
-  }
-
-  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
-  if (diagramType === "markdown") {
-    return <MarkmapViewer data={data} height={500} />
-  }
-
   // Função para obter cores com base na paleta selecionada
   const getColorsByPalette = useCallback((palette: string) => {
     switch (palette) {
@@ -85,6 +75,16 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
         return "circle"
     }
   }, [])
+
+  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
+  if (diagramType === "horizontal") {
+    return <HorizontalMindMap data={data} colorPalette={colorPalette} />
+  }
+
+  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
+  if (diagramType === "markdown") {
+    return <MarkmapViewer data={data} height={500} />
+  }
 
   // Função para calcular as dimensões reais do diagrama
   const calculateDiagramSize = useCallback(() => {
@@ -189,23 +189,23 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     const diagramCenterY = (diagramDimensions.minY + diagramDimensions.maxY) / 2
 
     // Calcular o zoom ideal para exibir todo o diagrama
-    const padding = 60 // Aumentar o padding para garantir mais espaço
+    const padding = 80 // Aumentar o padding para garantir mais espaço
     const widthRatio = (containerWidth - padding * 2) / diagramDimensions.width
     const heightRatio = (containerHeight - padding * 2) / diagramDimensions.height
-    const idealZoom = Math.min(widthRatio, heightRatio, 1) // Limitar zoom a 1 (sem ampliar)
+    const idealZoom = Math.min(widthRatio, heightRatio, 0.9) // Limitar zoom a 0.9 (sem ampliar muito)
 
     // Calcular a posição para centralizar
     const centerX = containerWidth / 2 - diagramCenterX * idealZoom
     const centerY = containerHeight / 2 - diagramCenterY * idealZoom
 
-    console.log("Nova posição calculada:", { x: centerX, y: centerY, zoom: idealZoom * 0.9 })
+    console.log("Nova posição calculada:", { x: centerX, y: centerY, zoom: idealZoom })
 
     // Aplicar o posicionamento e zoom calculados
     setPan({
       x: centerX,
       y: centerY,
     })
-    setZoom(idealZoom * 0.9) // Usar 90% do zoom ideal para garantir que tudo seja visível
+    setZoom(idealZoom) // Usar o zoom ideal para garantir que tudo seja visível
 
     // Atualizar o estado de dimensões do diagrama
     setDiagramSize({
@@ -245,7 +245,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     let isRadial = false
 
     // Configurar margens adequadas para cada tipo de diagrama
-    const margin = { top: 50, right: 150, bottom: 50, left: 150 }
+    const margin = { top: 80, right: 200, bottom: 80, left: 200 }
 
     switch (diagramType) {
       case "logical-structure":
@@ -259,7 +259,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
         isRadial = true
         layout = d3
           .tree()
-          .size([2 * Math.PI, Math.min(width, height) / 3]) // Layout circular
+          .size([2 * Math.PI, Math.min(width, height) / 2.5]) // Layout circular com tamanho ajustado
           .separation((a, b) => (a.parent === b.parent ? 1 : 2) / a.depth)
         break
       case "fishbone":
@@ -473,7 +473,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
       // e que todos os elementos do diagrama foram renderizados
       setTimeout(() => {
         centerDiagram()
-      }, 200) // Aumentar o timeout para garantir que o diagrama foi completamente renderizado
+      }, 300) // Aumentar o timeout para garantir que o diagrama foi completamente renderizado
     }
   }, [centerDiagram, colors, data, diagramType, layoutStyle, renderDiagram])
 
@@ -626,6 +626,19 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   useEffect(() => {
     setNodeShape(getNodeShape(layoutStyle))
   }, [getNodeShape, layoutStyle])
+
+  // Efeito adicional para garantir que o diagrama seja centralizado quando o tipo muda
+  useEffect(() => {
+    // Usar setTimeout para garantir que o diagrama foi renderizado após a mudança de tipo
+    const timer = setTimeout(() => {
+      centerDiagram()
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [diagramType, centerDiagram])
+
+  const isHorizontal = diagramType === "horizontal"
+  const isMarkdown = diagramType === "markdown"
 
   return (
     <div className={`flex flex-col gap-4 ${fullscreen ? "h-screen" : ""}`} data-testid="mind-map-component">
