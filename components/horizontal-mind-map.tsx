@@ -17,9 +17,10 @@ interface MindMapNode {
 interface HorizontalMindMapProps {
   data: MindMapNode
   colorPalette: string
+  fullscreen?: boolean
 }
 
-export function HorizontalMindMap({ data, colorPalette }: HorizontalMindMapProps) {
+export function HorizontalMindMap({ data, colorPalette, fullscreen = false }: HorizontalMindMapProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [zoom, setZoom] = useState(1)
@@ -482,10 +483,10 @@ export function HorizontalMindMap({ data, colorPalette }: HorizontalMindMapProps
   }, [])
 
   return (
-    <div className="flex flex-col gap-4" data-testid="horizontal-mind-map-component">
+    <div className={`flex flex-col gap-4 ${fullscreen ? "h-screen" : ""}`} data-testid="horizontal-mind-map-component">
       <div
         ref={containerRef}
-        className="w-full h-[500px] border rounded-lg relative bg-white"
+        className={`${fullscreen ? "w-full h-full" : "w-full h-[500px]"} border rounded-lg relative bg-white`}
         style={{
           backgroundImage: "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
           backgroundSize: "20px 20px",
@@ -508,38 +509,90 @@ export function HorizontalMindMap({ data, colorPalette }: HorizontalMindMapProps
             maxHeight: "100%",
           }}
         />
+
+        {/* Controles flutuantes quando em modo tela cheia */}
+        {fullscreen && (
+          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
+            <Button variant="outline" size="icon" onClick={handleZoomOut} title="Diminuir zoom">
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+
+            <div className="w-[200px]">
+              <Slider
+                defaultValue={[0.8]}
+                value={[zoom]}
+                min={0.5}
+                max={2}
+                step={0.1}
+                onValueChange={handleZoomChange}
+              />
+            </div>
+
+            <Button variant="outline" size="icon" onClick={handleZoomIn} title="Aumentar zoom">
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+
+            <Button variant="outline" size="icon" onClick={handleReset} title="Resetar visualização">
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* Botões de exportação flutuantes quando em modo tela cheia */}
+        {fullscreen && (
+          <div className="absolute top-4 right-4 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
+            <Button variant="outline" onClick={exportAsPNG} size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PNG
+            </Button>
+            <Button variant="outline" onClick={exportAsMarkdown} size="sm">
+              <FileText className="h-4 w-4 mr-2" />
+              Exportar Markdown
+            </Button>
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handleZoomOut} title="Diminuir zoom">
-            <ZoomOut className="h-4 w-4" />
-          </Button>
+      {/* Controles fixos quando não estiver em modo tela cheia */}
+      {!fullscreen && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={handleZoomOut} title="Diminuir zoom">
+              <ZoomOut className="h-4 w-4" />
+            </Button>
 
-          <div className="w-[200px]">
-            <Slider defaultValue={[0.8]} value={[zoom]} min={0.5} max={2} step={0.1} onValueChange={handleZoomChange} />
+            <div className="w-[200px]">
+              <Slider
+                defaultValue={[0.8]}
+                value={[zoom]}
+                min={0.5}
+                max={2}
+                step={0.1}
+                onValueChange={handleZoomChange}
+              />
+            </div>
+
+            <Button variant="outline" size="icon" onClick={handleZoomIn} title="Aumentar zoom">
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+
+            <Button variant="outline" size="icon" onClick={handleReset} title="Resetar visualização">
+              <RotateCcw className="h-4 w-4" />
+            </Button>
           </div>
 
-          <Button variant="outline" size="icon" onClick={handleZoomIn} title="Aumentar zoom">
-            <ZoomIn className="h-4 w-4" />
-          </Button>
-
-          <Button variant="outline" size="icon" onClick={handleReset} title="Resetar visualização">
-            <RotateCcw className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={exportAsPNG}>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PNG
+            </Button>
+            <Button variant="outline" onClick={exportAsMarkdown}>
+              <FileText className="h-4 w-4 mr-2" />
+              Exportar Markdown
+            </Button>
+          </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={exportAsPNG}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar PNG
-          </Button>
-          <Button variant="outline" onClick={exportAsMarkdown}>
-            <FileText className="h-4 w-4 mr-2" />
-            Exportar Markdown
-          </Button>
-        </div>
-      </div>
+      )}
     </div>
   )
 }

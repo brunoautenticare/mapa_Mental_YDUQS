@@ -13,9 +13,10 @@ interface MindMapNode {
 interface MarkdownMindMapProps {
   data: MindMapNode
   colorPalette: string
+  fullscreen?: boolean
 }
 
-export function MarkdownMindMap({ data, colorPalette }: MarkdownMindMapProps) {
+export function MarkdownMindMap({ data, colorPalette, fullscreen = false }: MarkdownMindMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
 
@@ -136,10 +137,10 @@ export function MarkdownMindMap({ data, colorPalette }: MarkdownMindMapProps) {
   }
 
   return (
-    <div className="flex flex-col gap-4" data-testid="markdown-mind-map">
+    <div className={`flex flex-col gap-4 ${fullscreen ? "h-screen" : ""}`} data-testid="markdown-mind-map">
       <div
         ref={containerRef}
-        className="w-full h-[500px] border rounded-lg relative bg-white p-6 overflow-auto"
+        className={`${fullscreen ? "w-full h-full" : "w-full h-[500px]"} border rounded-lg relative bg-white p-6 overflow-auto`}
         style={{
           backgroundImage: "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
           backgroundSize: "20px 20px",
@@ -148,12 +149,25 @@ export function MarkdownMindMap({ data, colorPalette }: MarkdownMindMapProps) {
         {data && renderNode(data)}
       </div>
 
-      <div className="flex items-center justify-end">
-        <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button">
-          <FileText className="h-4 w-4 mr-2" />
-          Exportar Markdown
-        </Button>
-      </div>
+      {/* Botões de exportação flutuantes quando em modo tela cheia */}
+      {fullscreen && (
+        <div className="absolute top-4 right-4 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
+          <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button" size="sm">
+            <FileText className="h-4 w-4 mr-2" />
+            Exportar Markdown
+          </Button>
+        </div>
+      )}
+
+      {/* Controles fixos quando não estiver em modo tela cheia */}
+      {!fullscreen && (
+        <div className="flex items-center justify-end">
+          <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button">
+            <FileText className="h-4 w-4 mr-2" />
+            Exportar Markdown
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

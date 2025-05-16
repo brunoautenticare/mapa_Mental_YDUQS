@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MindMap } from "@/components/mind-map"
 import { ColorPaletteSelector } from "@/components/color-palette-selector"
 import { LayoutStyleSelector } from "@/components/layout-style-selector"
 import { FileText, FileType, Globe, Youtube, Sparkles, Settings, Loader2, AlertCircle } from "lucide-react"
@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export function MindMapGenerator() {
+  const router = useRouter()
   const [inputText, setInputText] = useState("")
   const [language, setLanguage] = useState("português")
   const [isPending, startTransition] = useTransition()
@@ -54,7 +55,21 @@ export function MindMapGenerator() {
 
         if (result.data) {
           console.log("Mapa mental gerado com sucesso!")
-          setMindMapData(result.data)
+
+          // Salvar dados no localStorage
+          localStorage.setItem("mindMapData", JSON.stringify(result.data))
+          localStorage.setItem(
+            "mindMapSettings",
+            JSON.stringify({
+              diagramType,
+              colorPalette: selectedPalette,
+              layoutStyle,
+            }),
+          )
+
+          // Redirecionar para a página de visualização
+          router.push("/view-map")
+
           toast({
             title: "Sucesso",
             description: "Mapa mental gerado com sucesso!",
@@ -237,19 +252,7 @@ export function MindMapGenerator() {
             </div>
           )}
 
-          {mindMapData && !isPending && (
-            <div className="mt-8">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">Seu Mapa Mental</h3>
-              </div>
-              <MindMap
-                data={mindMapData}
-                diagramType={diagramType}
-                colorPalette={selectedPalette}
-                layoutStyle={layoutStyle}
-              />
-            </div>
-          )}
+          {/* Removido o código que exibia o mapa mental aqui */}
         </TabsContent>
 
         {/* Outras abas permanecem inalteradas */}

@@ -11,9 +11,10 @@ interface MarkmapViewerProps {
   data: any
   width?: string | number
   height?: string | number
+  fullscreen?: boolean
 }
 
-export function MarkmapViewer({ data, width = "100%", height = 500 }: MarkmapViewerProps) {
+export function MarkmapViewer({ data, width = "100%", height = 500, fullscreen = false }: MarkmapViewerProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const markmapRef = useRef<Markmap | null>(null)
   const [markdown, setMarkdown] = useState<string>("")
@@ -147,9 +148,9 @@ export function MarkmapViewer({ data, width = "100%", height = 500 }: MarkmapVie
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={`flex flex-col gap-4 ${fullscreen ? "h-screen" : ""}`}>
       <div
-        className="w-full h-[500px] border rounded-lg relative bg-white overflow-hidden"
+        className={`${fullscreen ? "w-full h-full" : "w-full h-[500px]"} border rounded-lg relative bg-white overflow-hidden`}
         style={{
           backgroundImage: "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
           backgroundSize: "20px 20px",
@@ -169,20 +170,37 @@ export function MarkmapViewer({ data, width = "100%", height = 500 }: MarkmapVie
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">Nenhum dado disponível</div>
         )}
+
+        {/* Botões de exportação flutuantes quando em modo tela cheia */}
+        {fullscreen && data && (
+          <div className="absolute top-4 right-4 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
+            <Button variant="outline" onClick={exportAsPNG} data-testid="export-png-button" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PNG
+            </Button>
+            <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button" size="sm">
+              <FileText className="h-4 w-4 mr-2" />
+              Exportar Markdown
+            </Button>
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center justify-end">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={exportAsPNG} data-testid="export-png-button">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar PNG
-          </Button>
-          <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button">
-            <FileText className="h-4 w-4 mr-2" />
-            Exportar Markdown
-          </Button>
+      {/* Controles fixos quando não estiver em modo tela cheia */}
+      {!fullscreen && data && (
+        <div className="flex items-center justify-end">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={exportAsPNG} data-testid="export-png-button">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PNG
+            </Button>
+            <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button">
+              <FileText className="h-4 w-4 mr-2" />
+              Exportar Markdown
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

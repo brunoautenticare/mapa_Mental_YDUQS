@@ -21,19 +21,10 @@ interface MindMapProps {
   diagramType: string
   colorPalette: string
   layoutStyle: string
+  fullscreen?: boolean
 }
 
-export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMapProps) {
-  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
-  if (diagramType === "horizontal") {
-    return <HorizontalMindMap data={data} colorPalette={colorPalette} />
-  }
-
-  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
-  if (diagramType === "markdown") {
-    return <MarkmapViewer data={data} height={500} />
-  }
-
+export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscreen = false }: MindMapProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const diagramRef = useRef<SVGGElement | null>(null)
@@ -48,6 +39,16 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
   // Usar refs para evitar re-renderizações desnecessárias
   const dataIdRef = useRef("")
   const initialPositionAppliedRef = useRef(false)
+
+  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
+  if (diagramType === "horizontal") {
+    return <HorizontalMindMap data={data} colorPalette={colorPalette} />
+  }
+
+  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
+  if (diagramType === "markdown") {
+    return <MarkmapViewer data={data} height={500} />
+  }
 
   // Função para obter cores com base na paleta selecionada
   const getColorsByPalette = useCallback((palette: string) => {
@@ -627,10 +628,10 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
   }, [getNodeShape, layoutStyle])
 
   return (
-    <div className="flex flex-col gap-4" data-testid="mind-map-component">
+    <div className={`flex flex-col gap-4 ${fullscreen ? "h-screen" : ""}`} data-testid="mind-map-component">
       <div
         ref={containerRef}
-        className="w-full h-[500px] border rounded-lg relative bg-white"
+        className={`${fullscreen ? "w-full h-full" : "w-full h-[500px]"} border rounded-lg relative bg-white`}
         style={{
           backgroundImage: "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
           backgroundSize: "20px 20px",
@@ -655,64 +656,128 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle }: MindMa
           }}
           data-testid="diagram-svg"
         />
+
+        {/* Controles flutuantes quando em modo tela cheia */}
+        {fullscreen && (
+          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomOut}
+              title="Diminuir zoom"
+              data-testid="zoom-out-button"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+
+            <div className="w-[200px]">
+              <Slider
+                defaultValue={[1]}
+                value={[zoom]}
+                min={0.5}
+                max={2}
+                step={0.1}
+                onValueChange={handleZoomChange}
+                data-testid="zoom-slider"
+              />
+            </div>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomIn}
+              title="Aumentar zoom"
+              data-testid="zoom-in-button"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleReset}
+              title="Resetar visualização"
+              data-testid="reset-button"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* Botões de exportação flutuantes quando em modo tela cheia */}
+        {fullscreen && (
+          <div className="absolute top-4 right-4 flex items-center gap-2 p-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
+            <Button variant="outline" onClick={exportAsPNG} data-testid="export-button" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PNG
+            </Button>
+            <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button" size="sm">
+              <FileText className="h-4 w-4 mr-2" />
+              Exportar Markdown
+            </Button>
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleZoomOut}
-            title="Diminuir zoom"
-            data-testid="zoom-out-button"
-          >
-            <ZoomOut className="h-4 w-4" />
-          </Button>
+      {/* Controles fixos quando não estiver em modo tela cheia */}
+      {!fullscreen && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomOut}
+              title="Diminuir zoom"
+              data-testid="zoom-out-button"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </Button>
 
-          <div className="w-[200px]">
-            <Slider
-              defaultValue={[1]}
-              value={[zoom]}
-              min={0.5}
-              max={2}
-              step={0.1}
-              onValueChange={handleZoomChange}
-              data-testid="zoom-slider"
-            />
+            <div className="w-[200px]">
+              <Slider
+                defaultValue={[1]}
+                value={[zoom]}
+                min={0.5}
+                max={2}
+                step={0.1}
+                onValueChange={handleZoomChange}
+                data-testid="zoom-slider"
+              />
+            </div>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomIn}
+              title="Aumentar zoom"
+              data-testid="zoom-in-button"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleReset}
+              title="Resetar visualização"
+              data-testid="reset-button"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
           </div>
 
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleZoomIn}
-            title="Aumentar zoom"
-            data-testid="zoom-in-button"
-          >
-            <ZoomIn className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleReset}
-            title="Resetar visualização"
-            data-testid="reset-button"
-          >
-            <RotateCcw className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={exportAsPNG} data-testid="export-button">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar PNG
+            </Button>
+            <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button">
+              <FileText className="h-4 w-4 mr-2" />
+              Exportar Markdown
+            </Button>
+          </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={exportAsPNG} data-testid="export-button">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar PNG
-          </Button>
-          <Button variant="outline" onClick={exportAsMarkdown} data-testid="export-markdown-button">
-            <FileText className="h-4 w-4 mr-2" />
-            Exportar Markdown
-          </Button>
-        </div>
-      </div>
+      )}
     </div>
   )
 }
