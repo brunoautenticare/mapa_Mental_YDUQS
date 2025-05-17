@@ -1,0 +1,5 @@
+(Binary content of favicon.ico file should be placed here. Since I cannot handle binary files, I will provide a placeholder indicating that the favicon.ico file should be placed in the app/ directory.)
+
+// This is a placeholder. Replace this with the actual favicon.ico file.
+// Ensure the favicon.ico file is located in the app/ directory.
+// Next.js 13+ with App Router looks for favicon.ico directly in the app/ folder.
