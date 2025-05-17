@@ -10,10 +10,9 @@ export const metadata: Metadata = {
   title: "Criador de Mapas Mentais | YDUQS",
   description: "Gere mapas mentais a partir de texto usando IA",
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon.png", type: "image/png" },
-    ],
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
   },
     generator: 'v0.dev'
 }
@@ -25,7 +24,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <head></head>
       <body className={inter.className}>
         {children}
         <Toaster />
