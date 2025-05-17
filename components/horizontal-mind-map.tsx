@@ -87,7 +87,7 @@ export function HorizontalMindMap({ data, colorPalette, fullscreen = false }: Ho
     const verticalSpacing = 120 // Aumentado para maior separação vertical entre filhos
     const grandchildSpacing = 100 // Espaçamento específico para netos
 
-    // Criar grupo principal do SVG com posição fixa
+    // Criar grupo principal do SVG
     const svg = d3
       .select(svgRef.current)
       .attr("width", "100%")
@@ -95,7 +95,7 @@ export function HorizontalMindMap({ data, colorPalette, fullscreen = false }: Ho
       .attr("viewBox", `0 0 ${width} ${height}`)
       .append("g")
       .attr("class", "diagram-container")
-      .attr("transform", `translate(${width / 2}, ${height / 2})`) // Manter posição fixa
+      .attr("transform", `translate(${width / 2}, ${height / 2})`)
 
     // Função para calcular posições dos nós
     const calculateNodePositions = () => {
@@ -355,7 +355,7 @@ export function HorizontalMindMap({ data, colorPalette, fullscreen = false }: Ho
   const handleReset = () => {
     // Definir uma posição fixa em vez de centralizar automaticamente
     setPan({ x: 0, y: 0 })
-    setZoom(0.8) // Zoom padrão
+    setZoom(1) // Zoom padrão
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -481,7 +481,7 @@ export function HorizontalMindMap({ data, colorPalette, fullscreen = false }: Ho
   // Inicializar com zoom um pouco menor para ver mais do diagrama
   useEffect(() => {
     // Definir um zoom fixo em vez de um valor que ajusta automaticamente o diagrama
-    setZoom(0.8)
+    setZoom(1)
   }, [])
 
   return (

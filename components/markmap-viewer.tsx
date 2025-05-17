@@ -68,8 +68,6 @@ export function MarkmapViewer({ data, width = "100%", height = 500, fullscreen =
           svgRef.current,
           {
             autoFit: false, // Desativar o autoajuste
-            initialZoom: 0.8, // Zoom inicial fixo
-            pan: [0, 0], // Posição inicial fixa
             color: (node: any) => {
               // Cores baseadas no nível do nó
               const colors = ["#4f46e5", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"]
