@@ -11,8 +11,6 @@ export const metadata: Metadata = {
   description: "Gere mapas mentais a partir de texto usando IA",
   icons: {
     icon: "/favicon.png",
-    shortcut: "/favicon.png",
-    apple: "/favicon.png",
   },
     generator: 'v0.dev'
 }
@@ -24,6 +22,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
+      <head>
+        <link rel="icon" href="/favicon.png" type="image/png" />
+      </head>
       <body className={inter.className}>
         {children}
         <Toaster />
