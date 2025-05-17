@@ -55,7 +55,7 @@ export function MarkmapViewer({ data, width = "100%", height = 500, fullscreen =
         const transformer = new Transformer()
         const { root } = transformer.transform(markdown)
         markmapRef.current.setData(root as INode)
-        markmapRef.current.fit()
+        // markmapRef.current.fit() - removido para evitar o autoajuste
       } catch (error) {
         console.error("Erro ao atualizar markmap:", error)
       }
@@ -67,7 +67,7 @@ export function MarkmapViewer({ data, width = "100%", height = 500, fullscreen =
         const mm = Markmap.create(
           svgRef.current,
           {
-            autoFit: true,
+            autoFit: false, // Desativar o autoajuste
             color: (node: any) => {
               // Cores baseadas no nível do nó
               const colors = ["#4f46e5", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"]

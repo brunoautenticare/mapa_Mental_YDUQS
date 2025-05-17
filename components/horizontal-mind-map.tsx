@@ -5,7 +5,7 @@ import type React from "react"
 import { useEffect, useRef, useState, useCallback } from "react"
 import * as d3 from "d3"
 import { Button } from "@/components/ui/button"
-import { Download, FileText, ZoomIn, ZoomOut, RotateCcw } from "lucide-react"
+import { Download, FileText, ZoomIn, ZoomOut } from "lucide-react"
 import { Slider } from "@/components/ui/slider"
 
 interface MindMapNode {
@@ -353,8 +353,9 @@ export function HorizontalMindMap({ data, colorPalette, fullscreen = false }: Ho
   }
 
   const handleReset = () => {
+    // Definir uma posição fixa em vez de centralizar automaticamente
     setPan({ x: 0, y: 0 })
-    setZoom(0.8) // Zoom inicial um pouco menor para ver mais do diagrama
+    setZoom(1) // Zoom padrão
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -479,7 +480,8 @@ export function HorizontalMindMap({ data, colorPalette, fullscreen = false }: Ho
 
   // Inicializar com zoom um pouco menor para ver mais do diagrama
   useEffect(() => {
-    setZoom(0.8)
+    // Definir um zoom fixo em vez de um valor que ajusta automaticamente o diagrama
+    setZoom(1)
   }, [])
 
   return (
@@ -531,10 +533,6 @@ export function HorizontalMindMap({ data, colorPalette, fullscreen = false }: Ho
             <Button variant="outline" size="icon" onClick={handleZoomIn} title="Aumentar zoom">
               <ZoomIn className="h-4 w-4" />
             </Button>
-
-            <Button variant="outline" size="icon" onClick={handleReset} title="Resetar visualização">
-              <RotateCcw className="h-4 w-4" />
-            </Button>
           </div>
         )}
 
@@ -574,10 +572,6 @@ export function HorizontalMindMap({ data, colorPalette, fullscreen = false }: Ho
 
             <Button variant="outline" size="icon" onClick={handleZoomIn} title="Aumentar zoom">
               <ZoomIn className="h-4 w-4" />
-            </Button>
-
-            <Button variant="outline" size="icon" onClick={handleReset} title="Resetar visualização">
-              <RotateCcw className="h-4 w-4" />
             </Button>
           </div>
 

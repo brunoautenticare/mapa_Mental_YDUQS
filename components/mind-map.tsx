@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useEffect, useRef, useState, useCallback } from "react"
 import * as d3 from "d3"
-import { ZoomIn, ZoomOut, RotateCcw, Download, FileText } from "lucide-react"
+import { ZoomIn, ZoomOut, Download, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { MarkmapViewer } from "@/components/markmap-viewer"
@@ -39,16 +39,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   // Usar refs para evitar re-renderizações desnecessárias
   const dataIdRef = useRef("")
   const initialPositionAppliedRef = useRef(false)
-
-  // Renderizar HorizontalMindMap se o tipo de diagrama for "horizontal"
-  if (diagramType === "horizontal") {
-    return <HorizontalMindMap data={data} colorPalette={colorPalette} />
-  }
-
-  // Renderizar MarkmapViewer se o tipo de diagrama for "markdown"
-  if (diagramType === "markdown") {
-    return <MarkmapViewer data={data} height={500} />
-  }
 
   // Função para obter cores com base na paleta selecionada
   const getColorsByPalette = useCallback((palette: string) => {
@@ -112,7 +102,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
 
         // Extrair valores de transformação
         if (transform) {
-          const match = transform.match(/translate$$([^,]+),([^)]+)$$/)
+          const match = transform.match(/translate$$(-?\d+\.?\d*),(-?\d+\.?\d*)$$/)
           if (match) {
             x = Number.parseFloat(match[1])
             y = Number.parseFloat(match[2])
@@ -159,63 +149,23 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   const centerDiagram = useCallback(() => {
     if (!containerRef.current || !svgRef.current) return
 
-    // Obter dimensões do contêiner
-    const containerWidth = containerRef.current.clientWidth
-    const containerHeight = containerRef.current.clientHeight
+    // Definir uma posição fixa inicial em vez de calcular com base no tamanho do diagrama
+    const centerX = 0
+    const centerY = 0
 
-    console.log("Dimensões do contêiner:", { width: containerWidth, height: containerHeight })
+    console.log("Posição inicial fixa:", { x: centerX, y: centerY })
 
-    // Calcular dimensões do diagrama
-    const diagramDimensions = calculateDiagramSize()
-    console.log("Dimensões do diagrama:", diagramDimensions)
-
-    if (diagramDimensions.width === 0 || diagramDimensions.height === 0) {
-      // Se não conseguimos calcular as dimensões, usar valores padrão
-      const centerX = containerWidth / 2
-      const centerY = containerHeight / 2
-
-      console.log("Usando posição central padrão:", { x: centerX, y: centerY })
-
-      setPan({
-        x: centerX,
-        y: centerY,
-      })
-      setZoom(1)
-      return
-    }
-
-    // Calcular o centro do diagrama
-    const diagramCenterX = (diagramDimensions.minX + diagramDimensions.maxX) / 2
-    const diagramCenterY = (diagramDimensions.minY + diagramDimensions.maxY) / 2
-
-    // Calcular o zoom ideal para exibir todo o diagrama
-    const padding = 60 // Aumentar o padding para garantir mais espaço
-    const widthRatio = (containerWidth - padding * 2) / diagramDimensions.width
-    const heightRatio = (containerHeight - padding * 2) / diagramDimensions.height
-    const idealZoom = Math.min(widthRatio, heightRatio, 1) // Limitar zoom a 1 (sem ampliar)
-
-    // Calcular a posição para centralizar
-    const centerX = containerWidth / 2 - diagramCenterX * idealZoom
-    const centerY = containerHeight / 2 - diagramCenterY * idealZoom
-
-    console.log("Nova posição calculada:", { x: centerX, y: centerY, zoom: idealZoom * 0.9 })
-
-    // Aplicar o posicionamento e zoom calculados
     setPan({
       x: centerX,
       y: centerY,
     })
-    setZoom(idealZoom * 0.9) // Usar 90% do zoom ideal para garantir que tudo seja visível
 
-    // Atualizar o estado de dimensões do diagrama
-    setDiagramSize({
-      width: diagramDimensions.width,
-      height: diagramDimensions.height,
-    })
+    // Não alterar o zoom automaticamente
+    // setZoom(1) - removido para evitar o autoajuste de zoom
 
     // Marcar que o posicionamento inicial foi aplicado
     initialPositionAppliedRef.current = true
-  }, [calculateDiagramSize])
+  }, [])
 
   // Função para renderizar o diagrama
   const renderDiagram = useCallback(() => {
@@ -459,21 +409,66 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     URL.revokeObjectURL(url)
   }
 
+  // Função para exportar o diagrama como PNG
+  const exportAsPNG = () => {
+    if (!svgRef.current) return
+
+    const svgData = new XMLSerializer().serializeToString(svgRef.current)
+    const canvas = document.createElement("canvas")
+    const ctx = canvas.getContext("2d")
+
+    const img = new Image()
+    img.onload = () => {
+      canvas.width = 800
+      canvas.height = 500
+
+      // Desenhar o fundo pontilhado
+      if (ctx) {
+        ctx.fillStyle = "#ffffff"
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+        // Desenhar os pontos
+        ctx.fillStyle = "#e5e7eb"
+        for (let x = 0; x < canvas.width; x += 20) {
+          for (let y = 0; y < canvas.height; y += 20) {
+            ctx.beginPath()
+            ctx.arc(x, y, 1, 0, 2 * Math.PI)
+            ctx.fill()
+          }
+        }
+
+        // Desenhar o SVG
+        ctx.drawImage(img, 0, 0)
+
+        // Converter para PNG e fazer download
+        const link = document.createElement("a")
+        link.download = "mind-map.png"
+        link.href = canvas.toDataURL("image/png")
+        link.click()
+      }
+    }
+
+    img.crossOrigin = "anonymous"
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData)
+  }
+
   // Efeito para renderizar o diagrama quando os dados ou configurações mudam
   useEffect(() => {
     const isNewData = renderDiagram()
 
-    // Se são novos dados, resetar o posicionamento
+    // Se são novos dados, não resetar o posicionamento automaticamente
     if (isNewData) {
       // Resetar o pan e zoom para valores iniciais
       setPan({ x: 0, y: 0 })
       setZoom(1)
 
-      // Usar setTimeout para garantir que o DOM foi atualizado
-      // e que todos os elementos do diagrama foram renderizados
-      setTimeout(() => {
-        centerDiagram()
-      }, 200) // Aumentar o timeout para garantir que o diagrama foi completamente renderizado
+      // Não chamar centerDiagram automaticamente
+      // setTimeout(() => {
+      //   centerDiagram()
+      // }, 200)
+
+      // Marcar que o posicionamento inicial foi aplicado
+      initialPositionAppliedRef.current = true
     }
   }, [centerDiagram, colors, data, diagramType, layoutStyle, renderDiagram])
 
@@ -564,49 +559,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     }
   }
 
-  // Função para exportar o diagrama como PNG
-  const exportAsPNG = () => {
-    if (!svgRef.current) return
-
-    const svgData = new XMLSerializer().serializeToString(svgRef.current)
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")
-
-    const img = new Image()
-    img.onload = () => {
-      canvas.width = 800
-      canvas.height = 500
-
-      // Desenhar o fundo pontilhado
-      if (ctx) {
-        ctx.fillStyle = "#ffffff"
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-        // Desenhar os pontos
-        ctx.fillStyle = "#e5e7eb"
-        for (let x = 0; x < canvas.width; x += 20) {
-          for (let y = 0; y < canvas.height; y += 20) {
-            ctx.beginPath()
-            ctx.arc(x, y, 1, 0, 2 * Math.PI)
-            ctx.fill()
-          }
-        }
-
-        // Desenhar o SVG
-        ctx.drawImage(img, 0, 0)
-
-        // Converter para PNG e fazer download
-        const link = document.createElement("a")
-        link.download = "mind-map.png"
-        link.href = canvas.toDataURL("image/png")
-        link.click()
-      }
-    }
-
-    img.crossOrigin = "anonymous"
-    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData)
-  }
-
   // Efeito para recentralizar o diagrama quando o tamanho da janela mudar
   useEffect(() => {
     const handleResize = () => {
@@ -629,6 +581,8 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
 
   return (
     <div className={`flex flex-col gap-4 ${fullscreen ? "h-screen" : ""}`} data-testid="mind-map-component">
+      {diagramType === "horizontal" && <HorizontalMindMap data={data} colorPalette={colorPalette} />}
+      {diagramType === "markdown" && <MarkmapViewer data={data} height={500} />}
       <div
         ref={containerRef}
         className={`${fullscreen ? "w-full h-full" : "w-full h-[500px]"} border rounded-lg relative bg-white`}
@@ -691,16 +645,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
             >
               <ZoomIn className="h-4 w-4" />
             </Button>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleReset}
-              title="Resetar visualização"
-              data-testid="reset-button"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
           </div>
         )}
 
@@ -753,16 +697,6 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
               data-testid="zoom-in-button"
             >
               <ZoomIn className="h-4 w-4" />
-            </Button>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleReset}
-              title="Resetar visualização"
-              data-testid="reset-button"
-            >
-              <RotateCcw className="h-4 w-4" />
             </Button>
           </div>
 
