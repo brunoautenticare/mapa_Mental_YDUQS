@@ -149,19 +149,19 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   const centerDiagram = useCallback(() => {
     if (!containerRef.current || !svgRef.current) return
 
-    // Definir uma posição fixa inicial em vez de calcular com base no tamanho do diagrama
-    const centerX = 0
-    const centerY = 0
+    // Obter as dimensões do contêiner
+    const containerWidth = containerRef.current.clientWidth
+    const containerHeight = containerRef.current.clientHeight
 
-    console.log("Posição inicial fixa:", { x: centerX, y: centerY })
+    // Calcular o centro do contêiner
+    const centerX = containerWidth / 2
+    const centerY = containerHeight / 2
 
+    // Definir a posição central
     setPan({
-      x: centerX,
-      y: centerY,
+      x: 0, // Manter x centralizado
+      y: 0, // Manter y centralizado
     })
-
-    // Não alterar o zoom automaticamente
-    // setZoom(1) - removido para evitar o autoajuste de zoom
 
     // Marcar que o posicionamento inicial foi aplicado
     initialPositionAppliedRef.current = true
@@ -430,7 +430,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
         // Desenhar os pontos
         ctx.fillStyle = "#e5e7eb"
         for (let x = 0; x < canvas.width; x += 20) {
-          for (let y = 0; y < canvas.height; y += 20) {
+          for (let y = 0; y < canvas.width; y += 20) {
             ctx.beginPath()
             ctx.arc(x, y, 1, 0, 2 * Math.PI)
             ctx.fill()
@@ -456,16 +456,16 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   useEffect(() => {
     const isNewData = renderDiagram()
 
-    // Se são novos dados, não resetar o posicionamento automaticamente
+    // Se são novos dados, resetar o posicionamento
     if (isNewData) {
       // Resetar o pan e zoom para valores iniciais
       setPan({ x: 0, y: 0 })
       setZoom(1)
 
-      // Não chamar centerDiagram automaticamente
-      // setTimeout(() => {
-      //   centerDiagram()
-      // }, 200)
+      // Aplicar centralização após um pequeno atraso
+      setTimeout(() => {
+        centerDiagram()
+      }, 100)
 
       // Marcar que o posicionamento inicial foi aplicado
       initialPositionAppliedRef.current = true
@@ -578,6 +578,18 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   useEffect(() => {
     setNodeShape(getNodeShape(layoutStyle))
   }, [getNodeShape, layoutStyle])
+
+  // Efeito para centralizar o diagrama após a renderização inicial
+  useEffect(() => {
+    if (data && !initialPositionAppliedRef.current) {
+      // Pequeno atraso para garantir que o SVG foi renderizado completamente
+      const timer = setTimeout(() => {
+        centerDiagram()
+      }, 100)
+
+      return () => clearTimeout(timer)
+    }
+  }, [data, centerDiagram])
 
   return (
     <div className={`flex flex-col gap-4 ${fullscreen ? "h-screen" : ""}`} data-testid="mind-map-component">

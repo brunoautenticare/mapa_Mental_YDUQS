@@ -484,6 +484,19 @@ export function HorizontalMindMap({ data, colorPalette, fullscreen = false }: Ho
     setZoom(1)
   }, [])
 
+  // Efeito para centralizar o diagrama após a renderização inicial
+  useEffect(() => {
+    if (data) {
+      // Pequeno atraso para garantir que o SVG foi renderizado completamente
+      const timer = setTimeout(() => {
+        // Centralizar o diagrama
+        setPan({ x: 0, y: 0 })
+      }, 100)
+
+      return () => clearTimeout(timer)
+    }
+  }, [data])
+
   return (
     <div className={`flex flex-col gap-4 ${fullscreen ? "h-screen" : ""}`} data-testid="horizontal-mind-map-component">
       <div

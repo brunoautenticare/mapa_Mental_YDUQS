@@ -89,6 +89,23 @@ export function MarkmapViewer({ data, width = "100%", height = 500, fullscreen =
     }
   }, [markdown])
 
+  // Efeito para centralizar o markmap após a renderização inicial
+  useEffect(() => {
+    if (markmapRef.current && markdown) {
+      // Pequeno atraso para garantir que o markmap foi renderizado completamente
+      const timer = setTimeout(() => {
+        try {
+          // Centralizar o markmap sem animação
+          markmapRef.current.fit({ duration: 0, padding: [50, 20] })
+        } catch (error) {
+          console.error("Erro ao centralizar markmap:", error)
+        }
+      }, 200)
+
+      return () => clearTimeout(timer)
+    }
+  }, [markdown])
+
   // Função para exportar o diagrama como Markdown
   const exportAsMarkdown = () => {
     if (!markdown) return
