@@ -64,6 +64,7 @@ export function MindMapGenerator() {
               diagramType,
               colorPalette: selectedPalette,
               layoutStyle,
+              autoAdjustDisabled: true, // Adicionar esta linha
             }),
           )
 

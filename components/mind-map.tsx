@@ -145,26 +145,11 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     }
   }, [])
 
-  // Função para centralizar o diagrama
+  // Função para centralizar o diagrama - DESATIVADA para evitar problemas de autoajuste
   const centerDiagram = useCallback(() => {
-    if (!containerRef.current || !svgRef.current) return
-
-    // Definir uma posição fixa inicial em vez de calcular com base no tamanho do diagrama
-    const centerX = 0
-    const centerY = 0
-
-    console.log("Posição inicial fixa:", { x: centerX, y: centerY })
-
-    setPan({
-      x: centerX,
-      y: centerY,
-    })
-
-    // Não alterar o zoom automaticamente
-    // setZoom(1) - removido para evitar o autoajuste de zoom
-
-    // Marcar que o posicionamento inicial foi aplicado
-    initialPositionAppliedRef.current = true
+    // Função desativada para evitar problemas de autoajuste
+    console.log("Centralização automática desativada")
+    // Não fazer nada - deixar o usuário controlar manualmente
   }, [])
 
   // Função para renderizar o diagrama
@@ -184,8 +169,8 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     d3.select(svgRef.current).selectAll("*").remove()
 
     // Dimensões base do SVG
-    const width = 800
-    const height = 500
+    const width = 2000 // Aumentado de 800 para 2000
+    const height = 1500 // Aumentado de 500 para 1500
 
     // Criar hierarquia
     const root = d3.hierarchy(data)
@@ -195,7 +180,7 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     let isRadial = false
 
     // Configurar margens adequadas para cada tipo de diagrama
-    const margin = { top: 50, right: 150, bottom: 50, left: 150 }
+    const margin = { top: 100, right: 300, bottom: 100, left: 300 } // Aumentadas
 
     switch (diagramType) {
       case "logical-structure":
@@ -456,16 +441,11 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   useEffect(() => {
     const isNewData = renderDiagram()
 
-    // Se são novos dados, não resetar o posicionamento automaticamente
+    // Se são novos dados, definir posição inicial fixa
     if (isNewData) {
-      // Resetar o pan e zoom para valores iniciais
+      // Definir posição inicial fixa em vez de autoajuste
       setPan({ x: 0, y: 0 })
-      setZoom(1)
-
-      // Não chamar centerDiagram automaticamente
-      // setTimeout(() => {
-      //   centerDiagram()
-      // }, 200)
+      setZoom(0.6) // Zoom inicial menor para ver mais do diagrama
 
       // Marcar que o posicionamento inicial foi aplicado
       initialPositionAppliedRef.current = true
@@ -496,7 +476,9 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
   }
 
   const handleReset = () => {
-    centerDiagram()
+    // Definir uma posição fixa em vez de chamar centerDiagram
+    setPan({ x: 0, y: 0 })
+    setZoom(0.8)
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -559,17 +541,11 @@ export function MindMap({ data, diagramType, colorPalette, layoutStyle, fullscre
     }
   }
 
-  // Efeito para recentralizar o diagrama quando o tamanho da janela mudar
+  // Remover o efeito de recentralização ao redimensionar a janela
+  // para evitar problemas de autoajuste
   useEffect(() => {
-    const handleResize = () => {
-      centerDiagram()
-    }
-
-    window.addEventListener("resize", handleResize)
-    return () => {
-      window.removeEventListener("resize", handleResize)
-    }
-  }, [centerDiagram])
+    // Não fazer nada ao redimensionar - deixar o usuário controlar manualmente
+  }, [])
 
   useEffect(() => {
     setColors(getColorsByPalette(colorPalette))

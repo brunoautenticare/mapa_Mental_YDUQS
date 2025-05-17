@@ -20,6 +20,8 @@ export default function ViewMap() {
     layoutStyle: "standard",
   })
 
+  const [autoAdjustDisabled] = useState(true) // Desativar autoajuste globalmente
+
   useEffect(() => {
     // Carregar dados do localStorage
     try {
@@ -97,9 +99,14 @@ export default function ViewMap() {
       {/* Mapa mental em tela cheia */}
       <div className="absolute inset-0">
         {settings.diagramType === "horizontal" ? (
-          <HorizontalMindMap data={mapData} colorPalette={settings.colorPalette} fullscreen={true} />
+          <HorizontalMindMap
+            data={mapData}
+            colorPalette={settings.colorPalette}
+            fullscreen={true}
+            autoAdjustDisabled={autoAdjustDisabled}
+          />
         ) : settings.diagramType === "markdown" ? (
-          <MarkmapViewer data={mapData} fullscreen={true} />
+          <MarkmapViewer data={mapData} fullscreen={true} autoAdjustDisabled={autoAdjustDisabled} />
         ) : (
           <MindMap
             data={mapData}
@@ -107,6 +114,7 @@ export default function ViewMap() {
             colorPalette={settings.colorPalette}
             layoutStyle={settings.layoutStyle}
             fullscreen={true}
+            autoAdjustDisabled={autoAdjustDisabled}
           />
         )}
       </div>
